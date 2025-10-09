@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=EFL Hello
+Comment=A tiny EFL demo application
+Exec=efl_hello
+Icon=efl-hello
+Terminal=false
+Type=Application
+Categories=Utility;

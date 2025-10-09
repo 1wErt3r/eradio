@@ -46,17 +46,36 @@ clean:
 
 # Installation directories
 PREFIX ?= /usr/local
+# Allow using either PREFIX or the conventional 'prefix' variable
+prefix ?= $(PREFIX)
 DESTDIR ?=
-BINDIR  := $(PREFIX)/bin
+
+# XDG-compliant paths
+BINDIR   := $(prefix)/bin
+APPDIR   := $(prefix)/share/applications
+ICONDIR  := $(prefix)/share/icons/hicolor/scalable/apps
+
+# Desktop entry and icon sources
+DESKTOP_FILE := data/efl-hello.desktop
+ICON_FILE    := data/efl-hello.svg
 
 # Install binary
 install: $(PROGRAM)
+	# Create target directories
 	install -d $(DESTDIR)$(BINDIR)
+	install -d $(DESTDIR)$(APPDIR)
+	install -d $(DESTDIR)$(ICONDIR)
+	# Install binary
 	install -m 0755 $(PROGRAM) $(DESTDIR)$(BINDIR)/$(PROGRAM)
+	# Install desktop file and icon
+	install -m 0644 $(DESKTOP_FILE) $(DESTDIR)$(APPDIR)/efl-hello.desktop
+	install -m 0644 $(ICON_FILE) $(DESTDIR)$(ICONDIR)/efl-hello.svg
 
 # Uninstall binary
 uninstall:
 	rm -f $(DESTDIR)$(BINDIR)/$(PROGRAM)
+	rm -f $(DESTDIR)$(APPDIR)/efl-hello.desktop
+	rm -f $(DESTDIR)$(ICONDIR)/efl-hello.svg
 
 # Run the program
 run: $(PROGRAM)
@@ -92,8 +111,8 @@ help:
 	@echo "  clean          - Remove build artifacts"
 	@echo "  run            - Build and run the program"
 	@echo "  check-deps     - Check if EFL dependencies are installed"
-	@echo "  install        - Install binary (PREFIX=$(PREFIX))"
-	@echo "  uninstall      - Remove installed binary"
+	@echo "  install        - Install binary, desktop file, and icon (prefix=$(prefix))"
+	@echo "  uninstall      - Remove installed binary, desktop file, and icon"
 	@echo "Warning level targets:"
 	@echo "  warn-basic     - Build with basic warnings (-Wall)"
 	@echo "  warn-medium    - Build with medium warnings"
