@@ -34,4 +34,4 @@ jobs:
       run: make check-deps
       
     - name: Build application
-      run: make all
+      run: make clean && make all

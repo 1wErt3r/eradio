@@ -1,0 +1,9 @@
+# Build artifacts
+*.o
+efl_hello
+
+# Common build dirs
+build/
+dist/
+out/
+bin/
