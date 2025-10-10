@@ -1,7 +1,7 @@
 # Build artifacts
 *.o
-efl-internet-radio
-src/efl-internet-radio
+eradio
+src/eradio
 
 # Common build dirs
 build/

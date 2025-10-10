@@ -249,8 +249,8 @@ elm_main(int argc, char **argv)
 
    elm_policy_set(ELM_POLICY_QUIT, ELM_POLICY_QUIT_LAST_WINDOW_CLOSED);
 
-   ad.win = elm_win_add(NULL, "efl-internet-radio", ELM_WIN_BASIC);
-   elm_win_title_set(ad.win, "EFL Internet Radio");
+   ad.win = elm_win_add(NULL, "eradio", ELM_WIN_BASIC);
+   elm_win_title_set(ad.win, "eradio");
    elm_win_autodel_set(ad.win, EINA_TRUE);
    evas_object_smart_callback_add(ad.win, "delete,request", _win_del_cb, &ad);
    if (ee) evas_object_smart_callback_add(ad.win, "delete,request", _app_exit_cb, ee);
