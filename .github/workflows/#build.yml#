@@ -1,4 +1,3 @@
-
 name: Build
 
 on:
@@ -19,7 +18,7 @@ jobs:
       run: sudo apt-get update
       
     - name: Install build essentials
-      run: sudo apt-get install -y build-essential automake autoconf libxml2-dev
+      run: sudo apt-get install -y build-essential automake autoconf 
 
     - name: Install EFL development packages
       run: |
