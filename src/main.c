@@ -1,4 +1,5 @@
 #include <Elementary.h>
+#include <Ecore_Evas.h>
 #include <Emotion.h>
 #include <Ecore_Con.h>
 #include <libxml/parser.h>
@@ -26,6 +27,7 @@ static void _list_item_selected_cb(void *data, Evas_Object *obj, void *event_inf
 static void _play_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 static void _pause_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 static void _stop_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
+static void _hoversel_item_selected_cb(void *data, Evas_Object *obj, void *event_info);
 static void _search_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 
 static void
@@ -35,14 +37,27 @@ _win_del_cb(void *data, Evas_Object *obj, void *event_info)
 }
 
 static void
+_hoversel_item_selected_cb(void *data, Evas_Object *obj, void *event_info)
+{
+    Elm_Object_Item *it = event_info;
+    const char *label = elm_object_item_text_get(it);
+    elm_object_text_set(obj, label);
+}
+
+static void
 _list_item_selected_cb(void *data, Evas_Object *obj, void *event_info)
 {
    AppData *ad = data;
    Elm_Object_Item *it = event_info;
    Station *st = elm_object_item_data_get(it);
 
-   emotion_object_file_set(ad->emotion, st->url);
-   emotion_object_play_set(ad->emotion, EINA_TRUE);
+   if (!st) return;
+
+   if (st->url && st->url[0])
+     {
+        emotion_object_file_set(ad->emotion, st->url);
+        emotion_object_play_set(ad->emotion, EINA_TRUE);
+     }
 }
 
 
@@ -177,9 +192,13 @@ _url_complete_cb(void *data, int type, void *event_info)
     {
         xmlNodePtr cur = xpathObj->nodesetval->nodeTab[i];
         Station *st = calloc(1, sizeof(Station));
-        st->name = eina_stringshare_add((const char *)xmlGetProp(cur, (xmlChar *)"name"));
-        st->url = eina_stringshare_add((const char *)xmlGetProp(cur, (xmlChar *)"url_resolved"));
-        st->favicon = eina_stringshare_add((const char *)xmlGetProp(cur, (xmlChar *)"favicon"));
+        const char *name = (const char *)xmlGetProp(cur, (xmlChar *)"name");
+        const char *url = (const char *)xmlGetProp(cur, (xmlChar *)"url_resolved");
+        const char *favicon = (const char *)xmlGetProp(cur, (xmlChar *)"favicon");
+
+        if (name) st->name = eina_stringshare_add(name);
+        if (url) st->url = eina_stringshare_add(url);
+        if (favicon) st->favicon = eina_stringshare_add(favicon);
         ad->stations = eina_list_append(ad->stations, st);
 
         Evas_Object *ic = elm_icon_add(ad->win);
@@ -204,10 +223,27 @@ _stop_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info)
    emotion_object_position_set(ad->emotion, 0.0);
 }
 
+static void
+_app_exit_cb(void *data, Evas_Object *obj, void *event_info)
+{
+    Ecore_Evas *ee = data;
+    if (ee) ecore_evas_free(ee);
+}
+
+#include <stdlib.h>
+
 EAPI_MAIN int
 elm_main(int argc, char **argv)
 {
    AppData ad = {0};
+   Ecore_Evas *ee = ecore_evas_new(NULL, 0, 0, 0, 0, NULL);
+   if (ee)
+     {
+        int dpi = 0;
+        ecore_evas_screen_dpi_get(ee, NULL, &dpi);
+        if (dpi >= 192)
+          elm_config_scale_set(2.0);
+     }
 
    ecore_con_init();
 
@@ -217,17 +253,20 @@ elm_main(int argc, char **argv)
    elm_win_title_set(ad.win, "EFL Internet Radio");
    elm_win_autodel_set(ad.win, EINA_TRUE);
    evas_object_smart_callback_add(ad.win, "delete,request", _win_del_cb, &ad);
+   if (ee) evas_object_smart_callback_add(ad.win, "delete,request", _app_exit_cb, ee);
 
    ecore_event_handler_add(ECORE_CON_EVENT_URL_DATA, _url_data_cb, &ad);
    ecore_event_handler_add(ECORE_CON_EVENT_URL_COMPLETE, _url_complete_cb, &ad);
 
    Evas_Object *box = elm_box_add(ad.win);
+   elm_box_padding_set(box, 0, 10);
    evas_object_size_hint_weight_set(box, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
    elm_win_resize_object_add(ad.win, box);
    evas_object_show(box);
 
    Evas_Object *search_hbox = elm_box_add(ad.win);
    elm_box_horizontal_set(search_hbox, EINA_TRUE);
+   elm_box_padding_set(search_hbox, 10, 0);
    evas_object_size_hint_weight_set(search_hbox, EVAS_HINT_EXPAND, 0);
    evas_object_size_hint_align_set(search_hbox, EVAS_HINT_FILL, 0);
    elm_box_pack_end(box, search_hbox);
@@ -236,8 +275,8 @@ elm_main(int argc, char **argv)
    ad.search_entry = elm_entry_add(ad.win);
    elm_entry_single_line_set(ad.search_entry, EINA_TRUE);
    elm_entry_scrollable_set(ad.search_entry, EINA_TRUE);
-   evas_object_size_hint_weight_set(ad.search_entry, EVAS_HINT_EXPAND, 0);
-   evas_object_size_hint_align_set(ad.search_entry, EVAS_HINT_FILL, 0);
+   evas_object_size_hint_weight_set(ad.search_entry, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
+   evas_object_size_hint_align_set(ad.search_entry, EVAS_HINT_FILL, EVAS_HINT_FILL);
    elm_object_part_text_set(ad.search_entry, "guide", "Search for stations...");
    elm_box_pack_end(search_hbox, ad.search_entry);
    evas_object_show(ad.search_entry);
@@ -245,10 +284,10 @@ elm_main(int argc, char **argv)
    ad.search_hoversel = elm_hoversel_add(ad.win);
    elm_hoversel_hover_parent_set(ad.search_hoversel, ad.win);
    elm_object_text_set(ad.search_hoversel, "name");
-   elm_hoversel_item_add(ad.search_hoversel, "name", NULL, ELM_ICON_NONE, NULL, NULL);
-   elm_hoversel_item_add(ad.search_hoversel, "country", NULL, ELM_ICON_NONE, NULL, NULL);
-   elm_hoversel_item_add(ad.search_hoversel, "language", NULL, ELM_ICON_NONE, NULL, NULL);
-   elm_hoversel_item_add(ad.search_hoversel, "tag", NULL, ELM_ICON_NONE, NULL, NULL);
+   elm_hoversel_item_add(ad.search_hoversel, "name", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad.search_hoversel, "country", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad.search_hoversel, "language", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad.search_hoversel, "tag", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
    elm_box_pack_end(search_hbox, ad.search_hoversel);
    evas_object_show(ad.search_hoversel);
 
@@ -264,30 +303,28 @@ elm_main(int argc, char **argv)
    evas_object_show(ad.list);
 
    ad.emotion = emotion_object_add(ad.win);
-   evas_object_size_hint_weight_set(ad.emotion, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
-   evas_object_size_hint_align_set(ad.emotion, EVAS_HINT_FILL, EVAS_HINT_FILL);
-   elm_box_pack_end(box, ad.emotion);
-   evas_object_show(ad.emotion);
 
    Evas_Object *controls_hbox = elm_box_add(ad.win);
    elm_box_horizontal_set(controls_hbox, EINA_TRUE);
+   elm_box_padding_set(controls_hbox, 10, 0);
+   elm_box_align_set(controls_hbox, 0.5, 1.0);
    evas_object_size_hint_weight_set(controls_hbox, EVAS_HINT_EXPAND, 0);
    evas_object_size_hint_align_set(controls_hbox, EVAS_HINT_FILL, 0);
    elm_box_pack_end(box, controls_hbox);
    evas_object_show(controls_hbox);
 
    Evas_Object *play_btn = elm_button_add(ad.win);
-   elm_object_text_set(play_btn, "Play");
+   elm_object_text_set(play_btn, "▶");
    elm_box_pack_end(controls_hbox, play_btn);
    evas_object_show(play_btn);
 
    Evas_Object *pause_btn = elm_button_add(ad.win);
-   elm_object_text_set(pause_btn, "Pause");
+   elm_object_text_set(pause_btn, "⏸");
    elm_box_pack_end(controls_hbox, pause_btn);
    evas_object_show(pause_btn);
 
    Evas_Object *stop_btn = elm_button_add(ad.win);
-   elm_object_text_set(stop_btn, "Stop");
+   elm_object_text_set(stop_btn, "⏹");
    elm_box_pack_end(controls_hbox, stop_btn);
    evas_object_show(stop_btn);
 
@@ -297,6 +334,7 @@ elm_main(int argc, char **argv)
    evas_object_smart_callback_add(stop_btn, "clicked", _stop_btn_clicked_cb, &ad);
    evas_object_smart_callback_add(search_btn, "clicked", _search_btn_clicked_cb, &ad);
 
+   evas_object_resize(ad.win, 400, 600);
    evas_object_show(ad.win);
 
    elm_run();
