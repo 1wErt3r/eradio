@@ -15,6 +15,12 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Configure dpkg to skip docs
+      run: |
+        sudo mkdir -p /etc/dpkg/dpkg.cfg.d
+        echo "path-exclude /usr/share/doc/*" | sudo tee /etc/dpkg/dpkg.cfg.d/01_nodoc
+        echo "path-exclude /usr/share/man/*" | sudo tee -a /etc/dpkg/dpkg.cfg.d/01_nodoc
+
     - name: Install dependencies
       run: |
         sudo apt-get update
