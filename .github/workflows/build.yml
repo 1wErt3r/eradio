@@ -18,8 +18,8 @@ jobs:
       run: sudo apt-get update
       
     - name: Install build essentials
-      run: sudo apt-get install -y build-essential
-      
+      run: sudo apt-get install -y build-essential automake autoconf
+
     - name: Install EFL development packages
       run: |
         sudo apt-get install -y \
@@ -29,9 +29,12 @@ jobs:
 
     - name: Install pkg-config
       run: sudo apt-get install -y pkg-config
-      
-    - name: Check dependencies
-      run: make check-deps
-      
+
+    - name: Generate build system
+      run: autoreconf --install
+
+    - name: Configure project
+      run: ./configure
+
     - name: Build application
-      run: make clean && make all
+      run: make
