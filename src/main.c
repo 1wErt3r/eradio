@@ -2,6 +2,7 @@
 #include <Ecore_Evas.h>
 #include <Emotion.h>
 #include <Ecore_Con.h>
+#include <Ethumb_Client.h>
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 
@@ -10,6 +11,7 @@ typedef struct _Station
    const char *name;
    const char *url;
    const char *favicon;
+   const char *stationuuid;
 } Station;
 
 typedef struct _AppData
@@ -45,6 +47,22 @@ _hoversel_item_selected_cb(void *data, Evas_Object *obj, void *event_info)
 }
 
 static void
+_station_click_counter_request(Station *st)
+{
+   char url_str[1024];
+   Ecore_Con_Url *url;
+
+   if (!st || !st->stationuuid) return;
+
+   snprintf(url_str, sizeof(url_str), "http://de2.api.radio-browser.info/xml/url/%s",
+            st->stationuuid);
+
+   url = ecore_con_url_new(url_str);
+   ecore_con_url_additional_header_add(url, "User-Agent", "eradio/1.0");
+   ecore_con_url_get(url);
+}
+
+static void
 _list_item_selected_cb(void *data, Evas_Object *obj, void *event_info)
 {
    AppData *ad = data;
@@ -52,6 +70,8 @@ _list_item_selected_cb(void *data, Evas_Object *obj, void *event_info)
    Station *st = elm_object_item_data_get(it);
 
    if (!st) return;
+
+   _station_click_counter_request(st);
 
    if (st->url && st->url[0])
      {
@@ -104,6 +124,7 @@ _search_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info)
             search_type, search_term);
 
    url = ecore_con_url_new(url_str);
+   ecore_con_url_additional_header_add(url, "User-Agent", "eradio/1.0");
    ecore_con_url_data_set(url, d_ctx);
    ecore_con_url_get(url);
 }
@@ -120,6 +141,8 @@ _url_data_cb(void *data, int type, void *event_info)
     Ecore_Con_Event_Url_Data *url_data = event_info;
     Download_Context *d_ctx = ecore_con_url_data_get(url_data->url_con);
 
+    if (!d_ctx) return ECORE_CALLBACK_PASS_ON;
+
     if (!d_ctx->ctxt)
       {
          d_ctx->ctxt = xmlCreatePushParserCtxt(NULL, NULL,
@@ -132,6 +155,12 @@ _url_data_cb(void *data, int type, void *event_info)
     return ECORE_CALLBACK_PASS_ON;
 }
 
+static void
+_thumb_load_error_cb(void *data, Evas_Object *obj, void *event_info)
+{
+   fprintf(stderr, "ERROR: could not load thumb\n");
+}
+
 static Eina_Bool
 _url_complete_cb(void *data, int type, void *event_info)
 {
@@ -142,7 +171,11 @@ _url_complete_cb(void *data, int type, void *event_info)
     xmlXPathContextPtr xpathCtx;
     xmlXPathObjectPtr xpathObj;
 
-    if (!d_ctx) return ECORE_CALLBACK_PASS_ON;
+    if (!d_ctx)
+      {
+         ecore_con_url_free(ev->url_con);
+         return ECORE_CALLBACK_PASS_ON;
+      }
 
     ad = d_ctx->ad;
 
@@ -192,18 +225,42 @@ _url_complete_cb(void *data, int type, void *event_info)
     {
         xmlNodePtr cur = xpathObj->nodesetval->nodeTab[i];
         Station *st = calloc(1, sizeof(Station));
-        const char *name = (const char *)xmlGetProp(cur, (xmlChar *)"name");
-        const char *url = (const char *)xmlGetProp(cur, (xmlChar *)"url_resolved");
-        const char *favicon = (const char *)xmlGetProp(cur, (xmlChar *)"favicon");
+        xmlChar *prop;
 
-        if (name) st->name = eina_stringshare_add(name);
-        if (url) st->url = eina_stringshare_add(url);
-        if (favicon) st->favicon = eina_stringshare_add(favicon);
+        prop = xmlGetProp(cur, (xmlChar *)"name");
+        if (prop)
+          {
+             st->name = eina_stringshare_add((const char *)prop);
+             xmlFree(prop);
+          }
+
+        prop = xmlGetProp(cur, (xmlChar *)"url_resolved");
+        if (prop)
+          {
+             st->url = eina_stringshare_add((const char *)prop);
+             xmlFree(prop);
+          }
+
+        prop = xmlGetProp(cur, (xmlChar *)"favicon");
+        if (prop)
+          {
+             st->favicon = eina_stringshare_add((const char *)prop);
+             xmlFree(prop);
+          }
+
+        prop = xmlGetProp(cur, (xmlChar *)"stationuuid");
+        if (prop)
+          {
+             st->stationuuid = eina_stringshare_add((const char *)prop);
+             xmlFree(prop);
+          }
         ad->stations = eina_list_append(ad->stations, st);
 
-        Evas_Object *ic = elm_icon_add(ad->win);
-        elm_icon_standard_set(ic, st->favicon);
-        elm_list_item_append(ad->list, st->name, ic, NULL, NULL, st);
+        Evas_Object *thumb = elm_thumb_add(ad->win);
+        evas_object_smart_callback_add(thumb, "load,error", _thumb_load_error_cb, NULL);
+        if (st->favicon && st->favicon[0])
+          elm_thumb_file_set(thumb, st->favicon, NULL);
+        elm_list_item_append(ad->list, st->name, thumb, NULL, NULL, st);
     }
     elm_list_go(ad->list);
 
@@ -217,6 +274,7 @@ _url_complete_cb(void *data, int type, void *event_info)
 
 static void
 _stop_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info)
+
 {
    AppData *ad = data;
    emotion_object_play_set(ad->emotion, EINA_FALSE);
@@ -246,6 +304,7 @@ elm_main(int argc, char **argv)
      }
 
    ecore_con_init();
+   ethumb_client_init();
 
    elm_policy_set(ELM_POLICY_QUIT, ELM_POLICY_QUIT_LAST_WINDOW_CLOSED);
 
@@ -338,6 +397,7 @@ elm_main(int argc, char **argv)
    evas_object_show(ad.win);
 
    elm_run();
+   ethumb_client_shutdown();
    ecore_con_shutdown();
    return 0;
 }

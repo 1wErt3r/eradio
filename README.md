@@ -1,26 +1,28 @@
-# EFL Boilerplate Template
+# eradio
 
-A minimal, well-structured starter template for building desktop applications with Enlightenment Foundation Libraries (EFL). It provides a clean "Hello, World!" example, a consistent Makefile, and a conventional project layout that you can copy and adapt for new projects.
+A simple internet radio player built with the Enlightenment Foundation Libraries (EFL).
 
 ## Features
 
-- Simple EFL (Elementary) window with centered "Hello, World!" label
-- Consistent Makefile with build, run, install, and warning-level targets
-- Conventional layout (`src/`) for easy expansion
-- Minimal dependencies (only `elementary` via `pkg-config`)
+- Search for radio stations using the [radio-browser.info](http://radio-browser.info/) API
+- List stations with their favicons
+- Play, pause, and stop radio streams
+- Search by station name, country, language, or tag
 
 ## Prerequisites
 
 - `EFL / Elementary`
 - `gcc` with C99 support
 - `pkg-config`
+- `libxml2`
 
 ## Project Structure
 
 - `configure.ac` — Autoconf script for project configuration and dependency checks.
 - `Makefile.am` — Top-level Automake file.
-- `src/main.c` — Entry point with a minimal EFL window.
+- `src/main.c` — Entry point and all application logic.
 - `src/Makefile.am` — Automake file for the source directory.
+- `data/` — Contains data files, such as the `.desktop` file and icon.
 - `README.md` — This guide.
 
 ## Build & Run
@@ -36,7 +38,7 @@ Then, configure, build, and run the application:
 ```bash
 ./configure
 make
-./src/efl_hello
+./src/eradio
 ```
 
 To clean the build artifacts:
@@ -45,13 +47,6 @@ To clean the build artifacts:
 make clean
 ```
 
-## Customizing for New Projects
-
-- **Project Name:** Edit `AC_INIT` in `configure.ac` to set your project's name, version, and contact email.
-- **Program Name:** In `src/Makefile.am`, change `bin_PROGRAMS` and the associated `_SOURCES` variable if you rename the executable.
-- **Source Files:** Add new `.c` files to the `efl_hello_SOURCES` variable in `src/Makefile.am`.
-
 ## Code Overview
 
-The template initializes Elementary, creates a standard window, adds a background, and centers a label.
-It demonstrates core EFL concepts: window creation, object sizing, alignment, and the main event loop.
+The application initializes Elementary, creates a window with a search bar, a results list, and playback controls. It uses `Ecore_Con` to fetch station data from the `radio-browser.info` API, parses the XML response with `libxml2`, and populates a list. The `Emotion` library is used to handle media playback.
