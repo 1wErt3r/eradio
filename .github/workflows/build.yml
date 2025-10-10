@@ -15,21 +15,18 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Update package lists
-      run: sudo apt-get update
-      
-    - name: Install build essentials
-      run: sudo apt-get install -y build-essential automake autoconf libxml2-dev
-
-    - name: Install EFL development packages
+    - name: Install dependencies
       run: |
+        sudo apt-get update
         sudo apt-get install -y \
+          build-essential \
+          automake \
+          autoconf \
+          pkg-config \
+          libxml2-dev \
           libefl-all-dev \
           libeet-bin \
           libeina-bin
-
-    - name: Install pkg-config
-      run: sudo apt-get install -y pkg-config
 
     - name: Generate build system
       run: autoreconf --install
