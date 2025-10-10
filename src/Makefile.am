@@ -1,6 +1,6 @@
-bin_PROGRAMS = efl_hello
+bin_PROGRAMS = efl-internet-radio
 
-efl_hello_SOURCES = main.c
+efl_internet_radio_SOURCES = main.c
 
-efl_hello_CFLAGS = $(ELEMENTARY_CFLAGS)
-efl_hello_LDADD = $(ELEMENTARY_LIBS)
+efl_internet_radio_CFLAGS = $(EFL_CFLAGS)
+efl_internet_radio_LDADD = $(EFL_LIBS) $(LIBXML_LIBS)

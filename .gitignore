@@ -1,6 +1,7 @@
 # Build artifacts
 *.o
-efl_hello
+efl-internet-radio
+src/efl-internet-radio
 
 # Common build dirs
 build/
@@ -12,17 +13,24 @@ bin/
 Makefile
 Makefile.in
 aclocal.m4
-autom4te.cache
+autom4te.cache/
 compile
 config.h
 config.h.in
+config.h.in~
 config.log
 config.status
 configure
+configure~
 depcomp
 install-sh
+ltmain.sh
 missing
 stamp-h1
 src/Makefile
 src/Makefile.in
-src/.deps
+src/.deps/
+data/Makefile
+data/Makefile.in
+m4/
+build-aux/

@@ -1,5 +1,5 @@
-SUBDIRS = src
+SUBDIRS = src data
 
 dist_pkgdata_DATA = \
-    data/efl-hello.desktop \
-    data/efl-hello.svg
+    data/efl-internet-radio.desktop \
+    data/efl-internet-radio.svg
