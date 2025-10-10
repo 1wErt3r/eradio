@@ -2,6 +2,8 @@
 
 A simple internet radio player built with the Enlightenment Foundation Libraries (EFL).
 
+![Screenshot](screenshot.png)
+
 ## Features
 
 - Search for radio stations using the [radio-browser.info](http://radio-browser.info/) API
@@ -50,3 +52,4 @@ make clean
 ## Code Overview
 
 The application initializes Elementary, creates a window with a search bar, a results list, and playback controls. It uses `Ecore_Con` to fetch station data from the `radio-browser.info` API, parses the XML response with `libxml2`, and populates a list. The `Emotion` library is used to handle media playback.
+
