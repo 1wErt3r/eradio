@@ -13,6 +13,11 @@ typedef struct _Station
    Eina_Bool favorite;
 } Station;
 
+typedef enum {
+   VIEW_SEARCH,
+   VIEW_FAVORITES
+} ViewMode;
+
 typedef struct _AppData
 {
    Evas_Object *win;
@@ -23,9 +28,10 @@ typedef struct _AppData
    Evas_Object *play_pause_btn;
    Evas_Object *stop_btn;
    Evas_Object *search_btn;
+   Evas_Object *search_bar;
    Eina_List *stations;
    Eina_Bool playing;
    Eina_Hash *favorites;
    Eina_List *favorites_stations;
-   Evas_Object *favorites_btn;
+   ViewMode view_mode;
 } AppData;

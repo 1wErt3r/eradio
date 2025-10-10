@@ -236,7 +236,8 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
     }
 
     favorites_apply_to_stations(ad);
-    station_list_populate(ad, ad->stations);
+    if (ad->view_mode == VIEW_SEARCH)
+      station_list_populate(ad, ad->stations);
 
     xmlXPathFreeObject(xpathObj);
     xmlXPathFreeContext(xpathCtx);
