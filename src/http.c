@@ -4,6 +4,7 @@
 
 #include "http.h"
 #include "station_list.h"
+#include "favorites.h"
 
 typedef enum _Download_Type
 {
@@ -234,6 +235,7 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
         ad->stations = eina_list_append(ad->stations, st);
     }
 
+    favorites_apply_to_stations(ad);
     station_list_populate(ad, ad->stations);
 
     xmlXPathFreeObject(xpathObj);

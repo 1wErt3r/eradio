@@ -10,6 +10,7 @@ typedef struct _Station
    const char *url;
    const char *favicon;
    const char *stationuuid;
+   Eina_Bool favorite;
 } Station;
 
 typedef struct _AppData
@@ -24,4 +25,7 @@ typedef struct _AppData
    Evas_Object *search_btn;
    Eina_List *stations;
    Eina_Bool playing;
+   Eina_Hash *favorites;
+   Eina_List *favorites_stations;
+   Evas_Object *favorites_btn;
 } AppData;

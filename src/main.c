@@ -2,6 +2,7 @@
 #include "ui.h"
 #include "radio_player.h"
 #include "http.h"
+#include "favorites.h"
 
 EAPI_MAIN int
 elm_main(int argc, char **argv)
@@ -11,6 +12,8 @@ elm_main(int argc, char **argv)
    elm_policy_set(ELM_POLICY_QUIT, ELM_POLICY_QUIT_LAST_WINDOW_CLOSED);
 
    ui_create(&ad);
+   favorites_init(&ad);
+   favorites_load(&ad);
    http_init(&ad);
    radio_player_init(&ad);
 
@@ -18,6 +21,7 @@ elm_main(int argc, char **argv)
 
    http_shutdown();
    radio_player_shutdown();
+   favorites_shutdown(&ad);
 
    return 0;
 }

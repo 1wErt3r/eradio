@@ -1,5 +1,7 @@
 #include "ui.h"
 #include "appdata.h"
+#include "favorites.h"
+#include "station_list.h"
 
 static void _win_del_cb(void *data, Evas_Object *obj, void *event_info);
 static void _app_exit_cb(void *data, Evas_Object *obj, void *event_info);
@@ -11,6 +13,7 @@ void _stop_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 void _search_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 void _search_entry_activated_cb(void *data, Evas_Object *obj, void *event_info);
 void _list_item_selected_cb(void *data, Evas_Object *obj, void *event_info);
+static void _favorites_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 
 
 static void
@@ -91,6 +94,11 @@ ui_create(AppData *ad)
    elm_box_pack_end(search_hbox, ad->search_btn);
    evas_object_show(ad->search_btn);
 
+   ad->favorites_btn = elm_button_add(ad->win);
+   elm_object_text_set(ad->favorites_btn, "Favorites");
+   elm_box_pack_end(search_hbox, ad->favorites_btn);
+   evas_object_show(ad->favorites_btn);
+
    ad->list = elm_list_add(ad->win);
    evas_object_size_hint_weight_set(ad->list, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
    evas_object_size_hint_align_set(ad->list, EVAS_HINT_FILL, EVAS_HINT_FILL);
@@ -129,7 +137,16 @@ ui_create(AppData *ad)
    evas_object_smart_callback_add(ad->search_btn, "clicked", _search_btn_clicked_cb, ad);
    evas_object_smart_callback_add(ad->search_entry, "activated", _search_entry_activated_cb, ad);
    evas_object_smart_callback_add(ad->list, "selected", _list_item_selected_cb, ad);
+   evas_object_smart_callback_add(ad->favorites_btn, "clicked", _favorites_btn_clicked_cb, ad);
 
    evas_object_resize(ad->win, 400, 600);
    evas_object_show(ad->win);
+}
+
+static void
+_favorites_btn_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
+{
+   AppData *ad = data;
+   favorites_rebuild_station_list(ad);
+   station_list_populate(ad, ad->favorites_stations);
 }
