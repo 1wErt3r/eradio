@@ -1,3 +1,4 @@
+#include <Ecore_File.h>
 #include "station_list.h"
 #include "radio_player.h"
 #include "http.h"
@@ -83,9 +84,20 @@ station_list_populate(AppData *ad, Eina_List *stations, Eina_Bool new_search)
                evas_object_smart_callback_add(fav_btn, "clicked", _favorite_remove_btn_clicked_cb, ctx);
           }
 
-        if (st->favicon && st->favicon[0])
+        if (st->favicon && st->favicon[0] && st->stationuuid)
           {
-             http_download_icon(ad, li, st->favicon);
+             char cache_path[PATH_MAX];
+             const char *home = getenv("HOME");
+             snprintf(cache_path, sizeof(cache_path), "%s/.cache/eradio/favicons/%s", home, st->stationuuid);
+
+             if (ecore_file_exists(cache_path))
+               {
+                  elm_image_file_set(icon, cache_path, NULL);
+               }
+             else
+               {
+                  http_download_icon(ad, li, st->favicon);
+               }
           }
     }
     elm_list_go(ad->list);
