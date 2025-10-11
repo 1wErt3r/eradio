@@ -61,7 +61,7 @@ ui_create(AppData *ad)
    if (ee) evas_object_smart_callback_add(ad->win, "delete,request", _app_exit_cb, ee);
 
    Evas_Object *box = elm_box_add(ad->win);
-   elm_box_padding_set(box, 0, 10);
+   elm_box_padding_set(box, 10, 10); // Add padding to the main box
    evas_object_size_hint_weight_set(box, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
    elm_win_resize_object_add(ad->win, box);
    evas_object_show(box);
@@ -81,8 +81,7 @@ ui_create(AppData *ad)
    elm_toolbar_item_append(toolbar, "emblem-favorite", "Favorites", _tb_favorites_clicked_cb, ad);
 
    ad->search_bar = elm_box_add(ad->win);
-   elm_box_horizontal_set(ad->search_bar, EINA_TRUE);
-   elm_box_padding_set(ad->search_bar, 10, 0);
+   elm_box_padding_set(ad->search_bar, 10, 10);
    evas_object_size_hint_weight_set(ad->search_bar, EVAS_HINT_EXPAND, 0);
    evas_object_size_hint_align_set(ad->search_bar, EVAS_HINT_FILL, 0);
    elm_box_pack_end(box, ad->search_bar);
@@ -98,6 +97,19 @@ ui_create(AppData *ad)
    evas_object_show(ad->search_entry);
    elm_object_focus_set(ad->search_entry, EINA_TRUE);
 
+   // Search options in a separate box
+   Evas_Object *search_options_box = elm_box_add(ad->win);
+   elm_box_horizontal_set(search_options_box, EINA_TRUE);
+   elm_box_padding_set(search_options_box, 10, 0);
+   elm_box_pack_end(ad->search_bar, search_options_box);
+   evas_object_show(search_options_box);
+
+   Evas_Object *lbl;
+   lbl = elm_label_add(ad->win);
+   elm_object_text_set(lbl, "Search by:");
+   elm_box_pack_end(search_options_box, lbl);
+   evas_object_show(lbl);
+
    ad->search_hoversel = elm_hoversel_add(ad->win);
    elm_hoversel_hover_parent_set(ad->search_hoversel, ad->win);
    elm_object_text_set(ad->search_hoversel, "name");
@@ -105,8 +117,13 @@ ui_create(AppData *ad)
    elm_hoversel_item_add(ad->search_hoversel, "country", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
    elm_hoversel_item_add(ad->search_hoversel, "language", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
    elm_hoversel_item_add(ad->search_hoversel, "tag", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
-   elm_box_pack_end(ad->search_bar, ad->search_hoversel);
+   elm_box_pack_end(search_options_box, ad->search_hoversel);
    evas_object_show(ad->search_hoversel);
+
+   lbl = elm_label_add(ad->win);
+   elm_object_text_set(lbl, "Sort by:");
+   elm_box_pack_end(search_options_box, lbl);
+   evas_object_show(lbl);
 
    ad->sort_hoversel = elm_hoversel_add(ad->win);
    elm_hoversel_hover_parent_set(ad->sort_hoversel, ad->win);
@@ -129,12 +146,12 @@ ui_create(AppData *ad)
    elm_hoversel_item_add(ad->sort_hoversel, "clicktrend", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
    elm_hoversel_item_add(ad->sort_hoversel, "changetimestamp", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
    elm_hoversel_item_add(ad->sort_hoversel, "random", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
-   elm_box_pack_end(ad->search_bar, ad->sort_hoversel);
+   elm_box_pack_end(search_options_box, ad->sort_hoversel);
    evas_object_show(ad->sort_hoversel);
 
    ad->reverse_check = elm_check_add(ad->win);
    elm_object_text_set(ad->reverse_check, "Reverse");
-   elm_box_pack_end(ad->search_bar, ad->reverse_check);
+   elm_box_pack_end(search_options_box, ad->reverse_check);
    evas_object_show(ad->reverse_check);
 
    // Server selection hoversel, populated after HTTP init discovers servers
@@ -149,7 +166,11 @@ ui_create(AppData *ad)
    elm_box_pack_end(ad->search_bar, ad->search_btn);
    evas_object_show(ad->search_btn);
 
-   /* Removed redundant Favorites button from search bar; toolbar handles view switching */
+   /* Separator */
+   Evas_Object *sep = elm_separator_add(ad->win);
+   elm_separator_horizontal_set(sep, EINA_TRUE);
+   elm_box_pack_end(box, sep);
+   evas_object_show(sep);
 
    ad->list = elm_list_add(ad->win);
    evas_object_size_hint_weight_set(ad->list, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
@@ -160,9 +181,9 @@ ui_create(AppData *ad)
    Evas_Object *controls_hbox = elm_box_add(ad->win);
    elm_box_horizontal_set(controls_hbox, EINA_TRUE);
    elm_box_padding_set(controls_hbox, 10, 0);
-   elm_box_align_set(controls_hbox, 0.5, 1.0);
+   elm_box_homogeneous_set(controls_hbox, EINA_TRUE);
    evas_object_size_hint_weight_set(controls_hbox, EVAS_HINT_EXPAND, 0);
-   evas_object_size_hint_align_set(controls_hbox, EVAS_HINT_FILL, 0);
+   evas_object_size_hint_align_set(controls_hbox, EVAS_HINT_FILL, 0.5);
    elm_box_pack_end(box, controls_hbox);
    evas_object_show(controls_hbox);
 
@@ -171,7 +192,7 @@ ui_create(AppData *ad)
    ad->play_pause_btn = elm_button_add(ad->win);
    ic = elm_icon_add(ad->play_pause_btn);
    elm_icon_standard_set(ic, "media-playback-start");
-   evas_object_size_hint_min_set(ic, 40, 40);
+   evas_object_size_hint_min_set(ic, 48, 48);
    elm_object_part_content_set(ad->play_pause_btn, "icon", ic);
    elm_box_pack_end(controls_hbox, ad->play_pause_btn);
    evas_object_show(ad->play_pause_btn);
@@ -179,22 +200,15 @@ ui_create(AppData *ad)
    ad->stop_btn = elm_button_add(ad->win);
    ic = elm_icon_add(ad->stop_btn);
    elm_icon_standard_set(ic, "media-playback-stop");
-   evas_object_size_hint_min_set(ic, 40, 40);
+   evas_object_size_hint_min_set(ic, 48, 48);
    elm_object_part_content_set(ad->stop_btn, "icon", ic);
    elm_box_pack_end(controls_hbox, ad->stop_btn);
    evas_object_show(ad->stop_btn);
 
    ad->load_more_btn = elm_button_add(ad->win);
    elm_object_text_set(ad->load_more_btn, "Load More");
-   Evas_Object *load_more_box = elm_box_add(ad->win);
-   elm_box_padding_set(load_more_box, 10, 0);
-   elm_box_align_set(load_more_box, 0.5, 1.0);
-   evas_object_size_hint_weight_set(load_more_box, EVAS_HINT_EXPAND, 0);
-   evas_object_size_hint_align_set(load_more_box, EVAS_HINT_FILL, 0);
-   elm_box_pack_end(load_more_box, ad->load_more_btn);
-   elm_box_pack_end(box, load_more_box);
-   evas_object_show(load_more_box);
-   evas_object_show(ad->load_more_btn);
+   elm_box_pack_end(controls_hbox, ad->load_more_btn);
+   evas_object_hide(ad->load_more_btn); // Hide by default
 
    evas_object_smart_callback_add(ad->play_pause_btn, "clicked", _play_pause_btn_clicked_cb, ad);
    evas_object_smart_callback_add(ad->stop_btn, "clicked", _stop_btn_clicked_cb, ad);
@@ -202,7 +216,6 @@ ui_create(AppData *ad)
    evas_object_smart_callback_add(ad->search_entry, "activated", _search_entry_activated_cb, ad);
    evas_object_smart_callback_add(ad->list, "selected", _list_item_selected_cb, ad);
    evas_object_smart_callback_add(ad->load_more_btn, "clicked", _load_more_btn_clicked_cb, ad);
-   /* Favorites view button removed; toolbar callbacks handle switching */
 
    /* Default to Search view on startup */
    ad->view_mode = VIEW_SEARCH;
@@ -213,7 +226,7 @@ ui_create(AppData *ad)
    else
      station_list_clear(ad);
 
-   evas_object_resize(ad->win, 400, 600);
+   evas_object_resize(ad->win, 480, 800);
    evas_object_show(ad->win);
 }
 
@@ -249,6 +262,7 @@ _tb_favorites_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_i
    AppData *ad = data;
    ad->view_mode = VIEW_FAVORITES;
    evas_object_hide(ad->search_bar);
+   ui_set_load_more_button_visibility(ad, EINA_FALSE);
    favorites_rebuild_station_list(ad);
    station_list_populate(ad, ad->favorites_stations, EINA_TRUE);
 }
@@ -259,6 +273,7 @@ _tb_search_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_info
    AppData *ad = data;
    ad->view_mode = VIEW_SEARCH;
    evas_object_show(ad->search_bar);
+   ui_set_load_more_button_visibility(ad, EINA_FALSE);
    if (ad->stations)
      station_list_populate(ad, ad->stations, EINA_TRUE);
    else
