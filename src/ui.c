@@ -2,6 +2,7 @@
 #include "appdata.h"
 #include "favorites.h"
 #include "station_list.h"
+#include "http.h" // Include http.h for http_search_stations
 
 static void _win_del_cb(void *data, Evas_Object *obj, void *event_info);
 static void _app_exit_cb(void *data, Evas_Object *obj, void *event_info);
@@ -17,6 +18,7 @@ void _search_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 void _search_entry_activated_cb(void *data, Evas_Object *obj, void *event_info);
 void _list_item_selected_cb(void *data, Evas_Object *obj, void *event_info);
 static void _favorites_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
+static void _load_more_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 
 
 static void
@@ -153,18 +155,26 @@ ui_create(AppData *ad)
    elm_box_pack_end(controls_hbox, ad->stop_btn);
    evas_object_show(ad->stop_btn);
 
+   ad->load_more_btn = elm_button_add(ad->win);
+   elm_object_text_set(ad->load_more_btn, "Load More");
+   elm_box_pack_end(controls_hbox, ad->load_more_btn);
+   evas_object_show(ad->load_more_btn);
+
    evas_object_smart_callback_add(ad->play_pause_btn, "clicked", _play_pause_btn_clicked_cb, ad);
    evas_object_smart_callback_add(ad->stop_btn, "clicked", _stop_btn_clicked_cb, ad);
    evas_object_smart_callback_add(ad->search_btn, "clicked", _search_btn_clicked_cb, ad);
    evas_object_smart_callback_add(ad->search_entry, "activated", _search_entry_activated_cb, ad);
    evas_object_smart_callback_add(ad->list, "selected", _list_item_selected_cb, ad);
+   evas_object_smart_callback_add(ad->load_more_btn, "clicked", _load_more_btn_clicked_cb, ad);
    /* Favorites view button removed; toolbar callbacks handle switching */
 
    /* Default to Search view on startup */
    ad->view_mode = VIEW_SEARCH;
+   ad->search_offset = 0; // Initialize offset
+   ui_set_load_more_button_visibility(ad, EINA_FALSE); // Initially hide load more button
    evas_object_show(ad->search_bar);
    if (ad->stations)
-     station_list_populate(ad, ad->stations);
+     station_list_populate(ad, ad->stations, EINA_TRUE);
    else
      station_list_clear(ad);
 
@@ -205,7 +215,7 @@ _tb_favorites_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_i
    ad->view_mode = VIEW_FAVORITES;
    evas_object_hide(ad->search_bar);
    favorites_rebuild_station_list(ad);
-   station_list_populate(ad, ad->favorites_stations);
+   station_list_populate(ad, ad->favorites_stations, EINA_TRUE);
 }
 
 static void
@@ -215,7 +225,25 @@ _tb_search_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_info
    ad->view_mode = VIEW_SEARCH;
    evas_object_show(ad->search_bar);
    if (ad->stations)
-     station_list_populate(ad, ad->stations);
+     station_list_populate(ad, ad->stations, EINA_TRUE);
    else
      station_list_clear(ad);
+}
+
+static void
+_load_more_btn_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
+{
+   AppData *ad = data;
+   const char *search_term = elm_object_text_get(ad->search_entry);
+   const char *search_type = elm_object_text_get(ad->search_hoversel);
+   ad->search_offset += 100; // Increment offset for next page
+   http_search_stations(ad, search_term, search_type, ad->search_offset, 100, EINA_FALSE);
+}
+
+void ui_set_load_more_button_visibility(AppData *ad, Eina_Bool visible)
+{
+    if (visible)
+        evas_object_show(ad->load_more_btn);
+    else
+        evas_object_hide(ad->load_more_btn);
 }

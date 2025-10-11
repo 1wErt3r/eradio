@@ -29,6 +29,7 @@ typedef struct _AppData
    Evas_Object *play_pause_btn;
    Evas_Object *stop_btn;
    Evas_Object *search_btn;
+   Evas_Object *load_more_btn;
    Evas_Object *search_bar;
    Eina_List *stations;
    Eina_List *api_servers;    // list of strings (hostnames)
@@ -37,4 +38,5 @@ typedef struct _AppData
    Eina_Hash *favorites;
    Eina_List *favorites_stations;
    ViewMode view_mode;
+   int search_offset;
 } AppData;
