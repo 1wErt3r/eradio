@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <time.h>
 #include <string.h>
+#include <Ecore_File.h>
 
 #include "http.h"
 #include "station_list.h"
@@ -192,9 +193,28 @@ _handle_icon_complete(Ecore_Con_Event_Url_Complete *ev)
     if (icon_ctx && icon_ctx->image_data)
     {
         Elm_Object_Item *it = icon_ctx->list_item;
+        Station *st = elm_object_item_data_get(it);
         Evas_Object *icon = elm_object_item_part_content_get(it, "start");
         const char *ext = strrchr(ecore_con_url_url_get(ev->url_con), '.');
         if (ext) ext++;
+
+        if (st && st->stationuuid)
+        {
+            char cache_dir[PATH_MAX];
+            const char *home = getenv("HOME");
+            snprintf(cache_dir, sizeof(cache_dir), "%s/.cache/eradio/favicons", home);
+            ecore_file_mkpath(cache_dir);
+
+            char cache_path[PATH_MAX];
+            snprintf(cache_path, sizeof(cache_path), "%s/%s", cache_dir, st->stationuuid);
+
+            FILE *f = fopen(cache_path, "wb");
+            if (f)
+            {
+                fwrite(eina_binbuf_string_get(icon_ctx->image_data), 1, eina_binbuf_length_get(icon_ctx->image_data), f);
+                fclose(f);
+            }
+        }
 
         elm_image_memfile_set(icon, eina_binbuf_string_get(icon_ctx->image_data), eina_binbuf_length_get(icon_ctx->image_data), (char *)ext, NULL);
     }
@@ -265,7 +285,15 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
 
     if (d_ctx->new_search)
     {
-        eina_list_free(ad->stations);
+        Station *st;
+        EINA_LIST_FREE(ad->stations, st)
+        {
+            eina_stringshare_del(st->name);
+            eina_stringshare_del(st->url);
+            eina_stringshare_del(st->favicon);
+            eina_stringshare_del(st->stationuuid);
+            free(st);
+        }
         ad->stations = NULL;
     }
 
