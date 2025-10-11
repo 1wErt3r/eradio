@@ -4,6 +4,11 @@ A simple internet radio player built with the Enlightenment Foundation Libraries
 
 ![Application Icon](data/eradio.png)
 
+## Screenshot
+
+![Screenshot](shot.png)
+
+
 ## Features
 
 - Search for radio stations using the [radio-browser.info](http://radio-browser.info/) API
