@@ -227,7 +227,7 @@ _handle_icon_complete(Ecore_Con_Event_Url_Complete *ev)
     }
 }
 
-static void
+static Eina_Bool
 _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
 {
     Station_Download_Context *d_ctx = ecore_con_url_data_get(ev->url_con);
@@ -236,7 +236,7 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
     xmlXPathContextPtr xpathCtx;
     xmlXPathObjectPtr xpathObj;
 
-    if (!d_ctx) return;
+    if (!d_ctx) return EINA_FALSE;
 
     ad = d_ctx->base.ad;
 
@@ -244,14 +244,14 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
       {
          printf("HTTP error %d on %s, trying fallback...\n", ev->status, ecore_con_url_url_get(ev->url_con));
          _retry_next_server_station(ev->url_con, d_ctx);
-         return;
+         return EINA_TRUE;
       }
 
     if (!d_ctx->ctxt)
       {
          printf("Error: no parser context; retrying next server...\n");
          _retry_next_server_station(ev->url_con, d_ctx);
-         return;
+         return EINA_TRUE;
       }
 
     xmlParseChunk(d_ctx->ctxt, "", 0, 1);
@@ -262,7 +262,7 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
     {
         printf("Error: could not parse XML; trying fallback...\n");
         _retry_next_server_station(ev->url_con, ecore_con_url_data_get(ev->url_con));
-        return;
+        return EINA_TRUE;
     }
 
     xpathCtx = xmlXPathNewContext(doc);
@@ -271,7 +271,7 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
         printf("Error: could not create new XPath context\n");
         xmlFreeDoc(doc);
         free(d_ctx);
-        return;
+        return EINA_FALSE;
     }
 
     xpathObj = xmlXPathEvalExpression((xmlChar *)"//station", xpathCtx);
@@ -281,7 +281,7 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
         xmlXPathFreeContext(xpathCtx);
         xmlFreeDoc(doc);
         free(d_ctx);
-        return;
+        return EINA_FALSE;
     }
 
     if (d_ctx->new_search)
@@ -358,6 +358,7 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
     xmlXPathFreeObject(xpathObj);
     xmlXPathFreeContext(xpathCtx);
     xmlFreeDoc(doc);
+    return EINA_FALSE;
 }
 
 static Eina_Bool
@@ -389,7 +390,10 @@ _url_complete_cb(void *data, int type, void *event_info)
       }
 
     if (ctx->type == DOWNLOAD_TYPE_STATIONS)
-      _handle_station_list_complete(ev);
+      {
+         if (_handle_station_list_complete(ev))
+           return ECORE_CALLBACK_PASS_ON;
+      }
     else if (ctx->type == DOWNLOAD_TYPE_ICON)
       _handle_icon_complete(ev);
     else if (ctx->type == DOWNLOAD_TYPE_COUNTER)
@@ -536,6 +540,11 @@ static void _retry_next_server_station(Ecore_Con_Url *old_url, Station_Download_
 {
    if (d_ctx->current && d_ctx->current->next)
    {
+      if (d_ctx->ctxt)
+        {
+           xmlFreeParserCtxt(d_ctx->ctxt);
+           d_ctx->ctxt = NULL;
+        }
       d_ctx->current = d_ctx->current->next;
       Ecore_Con_Url *new_url;
       _issue_station_request(&new_url, d_ctx);
