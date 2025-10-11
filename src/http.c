@@ -305,8 +305,6 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
         ad->stations = eina_list_append(ad->stations, st);
     }
 
-    free(d_ctx);
-
     favorites_apply_to_stations(ad);
     if (ad->view_mode == VIEW_SEARCH)
       station_list_populate(ad, ad->stations, d_ctx->new_search);
@@ -324,6 +322,8 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
         if (xpathObj->nodesetval->nodeNr == 0)
             ui_set_load_more_button_visibility(ad, EINA_FALSE);
     }
+
+    free(d_ctx);
 
     xmlXPathFreeObject(xpathObj);
     xmlXPathFreeContext(xpathCtx);
