@@ -10,6 +10,7 @@
 #include "http.h"
 #include "station_list.h"
 #include "favorites.h"
+#include "ui.h" // Include ui.h for ui_set_load_more_button_visibility
 
 typedef enum _Download_Type
 {
@@ -32,6 +33,9 @@ typedef struct _Station_Download_Context
    Eina_List *current;     // current server node
    char search_type[64];
    char search_term[512];
+   int offset;
+   int limit;
+   Eina_Bool new_search;
 } Station_Download_Context;
 
 typedef struct _Icon_Download_Context
@@ -81,7 +85,7 @@ http_shutdown(void)
 }
 
 void
-http_search_stations(AppData *ad, const char *search_term, const char *search_type)
+http_search_stations(AppData *ad, const char *search_term, const char *search_type, int offset, int limit, Eina_Bool new_search)
 {
    Ecore_Con_Url *url;
    Station_Download_Context *d_ctx;
@@ -91,6 +95,9 @@ http_search_stations(AppData *ad, const char *search_term, const char *search_ty
    d_ctx = calloc(1, sizeof(Station_Download_Context));
    d_ctx->base.type = DOWNLOAD_TYPE_STATIONS;
    d_ctx->base.ad = ad;
+   d_ctx->offset = offset;
+   d_ctx->limit = limit;
+   d_ctx->new_search = new_search;
    _populate_station_request(d_ctx, ad, search_type, search_term);
    _issue_station_request(&url, d_ctx);
    ecore_con_url_additional_header_add(url, "User-Agent", "eradio/1.0");
@@ -128,16 +135,17 @@ http_download_icon(AppData *ad, Elm_Object_Item *list_item, const char *url_str)
 }
 
 void
-_search_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info)
+_search_btn_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    AppData *ad = data;
    const char *search_term = elm_object_text_get(ad->search_entry);
    const char *search_type = elm_object_text_get(ad->search_hoversel);
-   http_search_stations(ad, search_term, search_type);
+   ad->search_offset = 0; // Reset offset for a new search
+   http_search_stations(ad, search_term, search_type, ad->search_offset, 100, EINA_TRUE);
 }
 
 void
-_search_entry_activated_cb(void *data, Evas_Object *obj, void *event_info)
+_search_entry_activated_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    _search_btn_clicked_cb(data, obj, event_info);
 }
@@ -224,7 +232,6 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
     xmlParseChunk(d_ctx->ctxt, "", 0, 1);
     doc = d_ctx->ctxt->myDoc;
     xmlFreeParserCtxt(d_ctx->ctxt);
-    free(d_ctx);
 
     if (doc == NULL)
     {
@@ -238,6 +245,7 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
     {
         printf("Error: could not create new XPath context\n");
         xmlFreeDoc(doc);
+        free(d_ctx);
         return;
     }
 
@@ -247,11 +255,15 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
         printf("Error: could not evaluate xpath expression\n");
         xmlXPathFreeContext(xpathCtx);
         xmlFreeDoc(doc);
+        free(d_ctx);
         return;
     }
 
-    eina_list_free(ad->stations);
-    ad->stations = NULL;
+    if (d_ctx->new_search)
+    {
+        eina_list_free(ad->stations);
+        ad->stations = NULL;
+    }
 
     for (int i = 0; i < xpathObj->nodesetval->nodeNr; i++)
     {
@@ -289,9 +301,17 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
         ad->stations = eina_list_append(ad->stations, st);
     }
 
+    free(d_ctx);
+
     favorites_apply_to_stations(ad);
     if (ad->view_mode == VIEW_SEARCH)
-      station_list_populate(ad, ad->stations);
+      station_list_populate(ad, ad->stations, d_ctx->new_search);
+
+    // Determine if "Load More" button should be visible
+    if (xpathObj->nodesetval->nodeNr == d_ctx->limit)
+      ui_set_load_more_button_visibility(ad, EINA_TRUE);
+    else
+      ui_set_load_more_button_visibility(ad, EINA_FALSE);
 
     xmlXPathFreeObject(xpathObj);
     xmlXPathFreeContext(xpathCtx);
@@ -464,9 +484,9 @@ static void _issue_station_request(Ecore_Con_Url **url_out, Station_Download_Con
    const char *server = d_ctx->current ? (const char *)d_ctx->current->data : NULL;
    char url_str[1024];
    if (server)
-      snprintf(url_str, sizeof(url_str), "http://%s/xml/stations/search?%s=%s", server, d_ctx->search_type, d_ctx->search_term);
+      snprintf(url_str, sizeof(url_str), "http://%s/xml/stations/search?%s=%s&offset=%d&limit=%d", server, d_ctx->search_type, d_ctx->search_term, d_ctx->offset, d_ctx->limit);
    else
-      snprintf(url_str, sizeof(url_str), "http://de2.api.radio-browser.info/xml/stations/search?%s=%s", d_ctx->search_type, d_ctx->search_term);
+      snprintf(url_str, sizeof(url_str), "http://de2.api.radio-browser.info/xml/stations/search?%s=%s&offset=%d&limit=%d", d_ctx->search_type, d_ctx->search_term, d_ctx->offset, d_ctx->limit);
    *url_out = ecore_con_url_new(url_str);
 }
 

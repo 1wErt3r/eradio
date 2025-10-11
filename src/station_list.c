@@ -33,12 +33,13 @@ station_list_clear(AppData *ad)
 }
 
 void
-station_list_populate(AppData *ad, Eina_List *stations)
+station_list_populate(AppData *ad, Eina_List *stations, Eina_Bool new_search)
 {
     Eina_List *l;
     Station *st;
 
-    station_list_clear(ad);
+    if (new_search)
+      station_list_clear(ad);
 
     EINA_LIST_FOREACH(stations, l, st)
     {
@@ -139,7 +140,7 @@ _favorite_remove_btn_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *
 
     // Rebuild favorites list to reflect removal
     favorites_rebuild_station_list(ctx->ad);
-    station_list_populate(ctx->ad, ctx->ad->favorites_stations);
+    station_list_populate(ctx->ad, ctx->ad->favorites_stations, EINA_TRUE);
 
     free(ctx);
 }
