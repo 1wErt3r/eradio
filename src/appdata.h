@@ -21,13 +21,17 @@ typedef enum {
 typedef struct _AppData
 {
    Evas_Object *win;
+   Evas_Object *top_toolbar;
+   Evas_Object *main_box;
    Evas_Object *list;
    Evas_Object *emotion;
    Evas_Object *search_entry;
    Evas_Object *search_hoversel;
    Evas_Object *server_hoversel;
-   Evas_Object *play_pause_btn;
-   Evas_Object *stop_btn;
+   Evas_Object *controls_toolbar;
+   Elm_Object_Item *play_pause_item;
+   Elm_Object_Item *stop_item;
+   Evas_Object *separator;
    Evas_Object *statusbar;
    Evas_Object *search_btn;
    Evas_Object *load_more_btn;

@@ -34,8 +34,8 @@ radio_player_play(AppData *ad, const char *url)
         emotion_object_file_set(ad->emotion, url);
         emotion_object_play_set(ad->emotion, EINA_TRUE);
         ad->playing = EINA_TRUE;
-        Evas_Object *ic = elm_object_part_content_get(ad->play_pause_btn, "icon");
-        elm_icon_standard_set(ic, "media-playback-pause");
+        if (ad->play_pause_item)
+          elm_toolbar_item_icon_set(ad->play_pause_item, "media-playback-pause");
      }
 }
 
@@ -45,8 +45,8 @@ radio_player_stop(AppData *ad)
    emotion_object_play_set(ad->emotion, EINA_FALSE);
    emotion_object_position_set(ad->emotion, 0.0);
    ad->playing = EINA_FALSE;
-   Evas_Object *ic = elm_object_part_content_get(ad->play_pause_btn, "icon");
-   elm_icon_standard_set(ic, "media-playback-start");
+   if (ad->play_pause_item)
+     elm_toolbar_item_icon_set(ad->play_pause_item, "media-playback-start");
 }
 
 void
@@ -54,12 +54,13 @@ radio_player_toggle_pause(AppData *ad)
 {
    ad->playing = !ad->playing;
    emotion_object_play_set(ad->emotion, ad->playing);
-
-   Evas_Object *ic = elm_object_part_content_get(ad->play_pause_btn, "icon");
-   if (ad->playing)
-     elm_icon_standard_set(ic, "media-playback-pause");
-   else
-     elm_icon_standard_set(ic, "media-playback-start");
+   if (ad->play_pause_item)
+     {
+        if (ad->playing)
+          elm_toolbar_item_icon_set(ad->play_pause_item, "media-playback-pause");
+        else
+          elm_toolbar_item_icon_set(ad->play_pause_item, "media-playback-start");
+     }
 }
 
 void

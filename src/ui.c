@@ -66,6 +66,7 @@ ui_create(AppData *ad)
    evas_object_size_hint_weight_set(box, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
    elm_win_resize_object_add(ad->win, box);
    evas_object_show(box);
+   ad->main_box = box;
 
    /* Toolbar at the top */
    Evas_Object *toolbar = elm_toolbar_add(ad->win);
@@ -76,6 +77,7 @@ ui_create(AppData *ad)
    evas_object_size_hint_align_set(toolbar, EVAS_HINT_FILL, 0);
    elm_box_pack_end(box, toolbar);
    evas_object_show(toolbar);
+   ad->top_toolbar = toolbar;
 
    /* Toolbar items */
    elm_toolbar_item_append(toolbar, "system-search", "Search", _tb_search_clicked_cb, ad);
@@ -88,15 +90,29 @@ ui_create(AppData *ad)
    elm_box_pack_end(box, ad->search_bar);
    evas_object_show(ad->search_bar);
 
+   // Row for search entry and button side-by-side
+   Evas_Object *search_row = elm_box_add(ad->win);
+   elm_box_horizontal_set(search_row, EINA_TRUE);
+   evas_object_size_hint_weight_set(search_row, EVAS_HINT_EXPAND, 0);
+   evas_object_size_hint_align_set(search_row, EVAS_HINT_FILL, 0);
+   elm_box_pack_end(ad->search_bar, search_row);
+   evas_object_show(search_row);
+
    ad->search_entry = elm_entry_add(ad->win);
    elm_entry_single_line_set(ad->search_entry, EINA_TRUE);
    elm_entry_scrollable_set(ad->search_entry, EINA_TRUE);
-   evas_object_size_hint_weight_set(ad->search_entry, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
-   evas_object_size_hint_align_set(ad->search_entry, EVAS_HINT_FILL, EVAS_HINT_FILL);
+   evas_object_size_hint_weight_set(ad->search_entry, EVAS_HINT_EXPAND, 0);
+   evas_object_size_hint_align_set(ad->search_entry, EVAS_HINT_FILL, 0.5);
    elm_object_part_text_set(ad->search_entry, "guide", "Search for stations...");
-   elm_box_pack_end(ad->search_bar, ad->search_entry);
+   elm_box_pack_end(search_row, ad->search_entry);
    evas_object_show(ad->search_entry);
    elm_object_focus_set(ad->search_entry, EINA_TRUE);
+
+   // Place Search button to the right of the entry
+   ad->search_btn = elm_button_add(ad->win);
+   elm_object_text_set(ad->search_btn, "Search");
+   elm_box_pack_end(search_row, ad->search_btn);
+   evas_object_show(ad->search_btn);
 
    // Filters toggle button
    ad->filters_toggle_btn = elm_button_add(ad->win);
@@ -110,7 +126,6 @@ ui_create(AppData *ad)
    elm_box_padding_set(ad->filters_box, 10, 10);
    evas_object_size_hint_weight_set(ad->filters_box, EVAS_HINT_EXPAND, 0);
    evas_object_size_hint_align_set(ad->filters_box, EVAS_HINT_FILL, 0);
-   elm_box_pack_end(ad->search_bar, ad->filters_box);
    evas_object_hide(ad->filters_box);
    ad->filters_visible = EINA_FALSE;
 
@@ -178,26 +193,6 @@ ui_create(AppData *ad)
    elm_box_pack_end(ad->filters_box, ad->server_hoversel);
    evas_object_show(ad->server_hoversel);
 
-   ad->search_btn = elm_button_add(ad->win);
-   elm_object_text_set(ad->search_btn, "Search");
-   elm_box_pack_end(ad->search_bar, ad->search_btn);
-   evas_object_show(ad->search_btn);
-
-   // Loading indicator (spinner)
-   ad->progressbar = elm_progressbar_add(ad->win);
-   elm_object_style_set(ad->progressbar, "wheel");
-   elm_progressbar_pulse_set(ad->progressbar, EINA_TRUE);
-   evas_object_size_hint_weight_set(ad->progressbar, 0.0, 0.0);
-   evas_object_size_hint_align_set(ad->progressbar, 0.5, 0.5);
-   elm_box_pack_end(ad->search_bar, ad->progressbar);
-   evas_object_hide(ad->progressbar);
-   ad->loading_requests = 0;
-
-   /* Separator */
-   Evas_Object *sep = elm_separator_add(ad->win);
-   elm_separator_horizontal_set(sep, EINA_TRUE);
-   elm_box_pack_end(box, sep);
-   evas_object_show(sep);
 
    ad->list = elm_list_add(ad->win);
    evas_object_size_hint_weight_set(ad->list, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
@@ -205,14 +200,14 @@ ui_create(AppData *ad)
    elm_box_pack_end(box, ad->list);
    evas_object_show(ad->list);
 
-   Evas_Object *controls_hbox = elm_box_add(ad->win);
-   elm_box_horizontal_set(controls_hbox, EINA_TRUE);
-   elm_box_padding_set(controls_hbox, 10, 0);
-   elm_box_homogeneous_set(controls_hbox, EINA_TRUE);
-   evas_object_size_hint_weight_set(controls_hbox, EVAS_HINT_EXPAND, 0);
-   evas_object_size_hint_align_set(controls_hbox, EVAS_HINT_FILL, 0.5);
-   elm_box_pack_end(box, controls_hbox);
-   evas_object_show(controls_hbox);
+   ad->controls_toolbar = elm_toolbar_add(ad->win);
+   elm_toolbar_shrink_mode_set(ad->controls_toolbar, ELM_TOOLBAR_SHRINK_MENU);
+   elm_toolbar_homogeneous_set(ad->controls_toolbar, EINA_TRUE);
+   elm_object_style_set(ad->controls_toolbar, "transparent");
+   evas_object_size_hint_weight_set(ad->controls_toolbar, EVAS_HINT_EXPAND, 0);
+   evas_object_size_hint_align_set(ad->controls_toolbar, EVAS_HINT_FILL, 0.5);
+   elm_box_pack_end(box, ad->controls_toolbar);
+   evas_object_show(ad->controls_toolbar);
 
    ad->statusbar = elm_label_add(ad->win);
    elm_object_text_set(ad->statusbar, "");
@@ -222,31 +217,14 @@ ui_create(AppData *ad)
    elm_box_pack_end(box, ad->statusbar);
    evas_object_show(ad->statusbar);
 
-   Evas_Object *ic;
-
-   ad->play_pause_btn = elm_button_add(ad->win);
-   ic = elm_icon_add(ad->play_pause_btn);
-   elm_icon_standard_set(ic, "media-playback-start");
-   evas_object_size_hint_min_set(ic, 48, 48);
-   elm_object_part_content_set(ad->play_pause_btn, "icon", ic);
-   elm_box_pack_end(controls_hbox, ad->play_pause_btn);
-   evas_object_show(ad->play_pause_btn);
-
-   ad->stop_btn = elm_button_add(ad->win);
-   ic = elm_icon_add(ad->stop_btn);
-   elm_icon_standard_set(ic, "media-playback-stop");
-   evas_object_size_hint_min_set(ic, 48, 48);
-   elm_object_part_content_set(ad->stop_btn, "icon", ic);
-   elm_box_pack_end(controls_hbox, ad->stop_btn);
-   evas_object_show(ad->stop_btn);
+   ad->play_pause_item = elm_toolbar_item_append(ad->controls_toolbar, "media-playback-start", "Play/Pause", _play_pause_btn_clicked_cb, ad);
+   ad->stop_item = elm_toolbar_item_append(ad->controls_toolbar, "media-playback-stop", "Stop", _stop_btn_clicked_cb, ad);
 
    ad->load_more_btn = elm_button_add(ad->win);
    elm_object_text_set(ad->load_more_btn, "Load More");
-   elm_box_pack_end(controls_hbox, ad->load_more_btn);
+   elm_box_pack_end(box, ad->load_more_btn);
    evas_object_hide(ad->load_more_btn); // Hide by default
 
-   evas_object_smart_callback_add(ad->play_pause_btn, "clicked", _play_pause_btn_clicked_cb, ad);
-   evas_object_smart_callback_add(ad->stop_btn, "clicked", _stop_btn_clicked_cb, ad);
    evas_object_smart_callback_add(ad->search_btn, "clicked", _search_btn_clicked_cb, ad);
    evas_object_smart_callback_add(ad->search_entry, "activated", _search_entry_activated_cb, ad);
    evas_object_smart_callback_add(ad->list, "selected", _list_item_selected_cb, ad);
@@ -274,11 +252,15 @@ _filters_toggle_btn_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *e
    if (ad->filters_visible)
    {
       elm_object_text_set(ad->filters_toggle_btn, "Filters ▴");
+      if (ad->search_bar && ad->filters_box && ad->filters_toggle_btn)
+        elm_box_pack_after(ad->search_bar, ad->filters_box, ad->filters_toggle_btn);
       evas_object_show(ad->filters_box);
    }
    else
    {
       elm_object_text_set(ad->filters_toggle_btn, "Filters ▾");
+      if (ad->search_bar && ad->filters_box)
+        elm_box_unpack(ad->search_bar, ad->filters_box);
       evas_object_hide(ad->filters_box);
    }
 }
@@ -339,7 +321,11 @@ _tb_favorites_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_i
 {
    AppData *ad = data;
    ad->view_mode = VIEW_FAVORITES;
+   // Remove search bar from layout entirely in Favorites view
+   if (ad->main_box && ad->search_bar)
+     elm_box_unpack(ad->main_box, ad->search_bar);
    evas_object_hide(ad->search_bar);
+   if (ad->separator) evas_object_hide(ad->separator);
    ui_set_load_more_button_visibility(ad, EINA_FALSE);
    favorites_rebuild_station_list(ad);
    station_list_populate(ad, ad->favorites_stations, EINA_TRUE);
@@ -350,7 +336,11 @@ _tb_search_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_info
 {
    AppData *ad = data;
    ad->view_mode = VIEW_SEARCH;
+   // Reinsert search bar right after the top toolbar to restore layout
+   if (ad->main_box && ad->search_bar && ad->top_toolbar)
+     elm_box_pack_after(ad->main_box, ad->search_bar, ad->top_toolbar);
    evas_object_show(ad->search_bar);
+   if (ad->separator) evas_object_show(ad->separator);
    ui_set_load_more_button_visibility(ad, EINA_FALSE);
    if (ad->stations)
      station_list_populate(ad, ad->stations, EINA_TRUE);
