@@ -6,7 +6,7 @@ A simple internet radio player built with the Enlightenment Foundation Libraries
 
 ## Screenshot
 
-![Screenshot](shot.png)
+![Screenshot](shot.jpg)
 
 
 ## Features
