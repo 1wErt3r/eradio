@@ -1,5 +1,5 @@
 desktopdir = $(datadir)/applications
 desktop_DATA = eradio.desktop
 
-svgdir = $(datadir)/pixmaps
-svg_DATA = eradio.png
+iconsdir = $(datadir)/icons/hicolor/128x128/apps
+icons_DATA = eradio.png
