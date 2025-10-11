@@ -1,9 +1,22 @@
 #include "radio_player.h"
 
+static void
+_title_changed_cb(void *data, Evas_Object *obj, void *event_info)
+{
+   AppData *ad = data;
+   const char *title = emotion_object_title_get(obj);
+   if (title)
+     {
+        printf("Station metadata: %s\n", title);
+        elm_object_text_set(ad->statusbar, title);
+     }
+}
+
 void
 radio_player_init(AppData *ad)
 {
    ad->emotion = emotion_object_add(ad->win);
+   evas_object_smart_callback_add(ad->emotion, "title_change", _title_changed_cb, ad);
 }
 
 void

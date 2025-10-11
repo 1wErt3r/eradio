@@ -187,6 +187,14 @@ ui_create(AppData *ad)
    elm_box_pack_end(box, controls_hbox);
    evas_object_show(controls_hbox);
 
+   ad->statusbar = elm_label_add(ad->win);
+   elm_object_text_set(ad->statusbar, "Now Playing: ");
+   elm_object_style_set(ad->statusbar, "marquee");
+   evas_object_size_hint_weight_set(ad->statusbar, EVAS_HINT_EXPAND, 0);
+   evas_object_size_hint_align_set(ad->statusbar, EVAS_HINT_FILL, 0.5);
+   elm_box_pack_end(box, ad->statusbar);
+   evas_object_show(ad->statusbar);
+
    Evas_Object *ic;
 
    ad->play_pause_btn = elm_button_add(ad->win);

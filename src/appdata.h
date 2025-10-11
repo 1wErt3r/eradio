@@ -28,6 +28,7 @@ typedef struct _AppData
    Evas_Object *server_hoversel;
    Evas_Object *play_pause_btn;
    Evas_Object *stop_btn;
+   Evas_Object *statusbar;
    Evas_Object *search_btn;
    Evas_Object *load_more_btn;
    Evas_Object *search_bar;
