@@ -8,6 +8,7 @@ static void _app_exit_cb(void *data, Evas_Object *obj, void *event_info);
 static void _hoversel_item_selected_cb(void *data, Evas_Object *obj, void *event_info);
 static void _tb_favorites_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 static void _tb_search_clicked_cb(void *data, Evas_Object *obj, void *event_info);
+static void _server_item_selected_cb(void *data, Evas_Object *obj, void *event_info);
 
 // Forward declarations for callbacks
 void _play_pause_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
@@ -105,6 +106,13 @@ ui_create(AppData *ad)
    elm_box_pack_end(ad->search_bar, ad->search_hoversel);
    evas_object_show(ad->search_hoversel);
 
+   // Server selection hoversel, populated after HTTP init discovers servers
+   ad->server_hoversel = elm_hoversel_add(ad->win);
+   elm_hoversel_hover_parent_set(ad->server_hoversel, ad->win);
+   elm_object_text_set(ad->server_hoversel, "server");
+   elm_box_pack_end(ad->search_bar, ad->server_hoversel);
+   evas_object_show(ad->server_hoversel);
+
    ad->search_btn = elm_button_add(ad->win);
    elm_object_text_set(ad->search_btn, "Search");
    elm_box_pack_end(ad->search_bar, ad->search_btn);
@@ -162,6 +170,32 @@ ui_create(AppData *ad)
 
    evas_object_resize(ad->win, 400, 600);
    evas_object_show(ad->win);
+}
+
+void ui_update_server_list(AppData *ad)
+{
+   if (!ad || !ad->server_hoversel) return;
+   Eina_List *l; const char *host;
+   EINA_LIST_FOREACH(ad->api_servers, l, host)
+   {
+      elm_hoversel_item_add(ad->server_hoversel, host, NULL, ELM_ICON_NONE, _server_item_selected_cb, ad);
+   }
+   if (ad->api_selected && ad->api_selected[0])
+      elm_object_text_set(ad->server_hoversel, ad->api_selected);
+}
+
+static void _server_item_selected_cb(void *data, Evas_Object *obj, void *event_info)
+{
+   AppData *ad = data;
+   if (!ad) return;
+   Elm_Object_Item *it = event_info;
+   const char *label = elm_object_item_text_get(it);
+   if (label && label[0])
+   {
+      elm_object_text_set(obj, label);
+      if (ad->api_selected) eina_stringshare_del(ad->api_selected);
+      ad->api_selected = eina_stringshare_add(label);
+   }
 }
 
 static void

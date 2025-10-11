@@ -5,3 +5,4 @@
 typedef struct _AppData AppData;
 
 void ui_create(AppData *ad);
+void ui_update_server_list(AppData *ad);

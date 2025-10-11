@@ -1,6 +1,11 @@
 #include <Ecore_Con.h>
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
+#include <netdb.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <time.h>
+#include <string.h>
 
 #include "http.h"
 #include "station_list.h"
@@ -9,7 +14,8 @@
 typedef enum _Download_Type
 {
    DOWNLOAD_TYPE_STATIONS,
-   DOWNLOAD_TYPE_ICON
+   DOWNLOAD_TYPE_ICON,
+   DOWNLOAD_TYPE_COUNTER
 } Download_Type;
 
 typedef struct _Download_Context
@@ -22,6 +28,10 @@ typedef struct _Station_Download_Context
 {
    Download_Context base;
    xmlParserCtxtPtr ctxt;
+   Eina_List *servers;     // list of const char* hostnames
+   Eina_List *current;     // current server node
+   char search_type[64];
+   char search_term[512];
 } Station_Download_Context;
 
 typedef struct _Icon_Download_Context
@@ -31,8 +41,26 @@ typedef struct _Icon_Download_Context
    Eina_Binbuf *image_data;
 } Icon_Download_Context;
 
+typedef struct _Counter_Download_Context
+{
+   Download_Context base;
+   Eina_List *servers;     // list of const char* hostnames
+   Eina_List *current;     // current server node
+   char stationuuid[128];
+} Counter_Download_Context;
+
 static Eina_Bool _url_data_cb(void *data, int type, void *event_info);
 static Eina_Bool _url_complete_cb(void *data, int type, void *event_info);
+
+static void _refresh_api_servers(AppData *ad);
+static void _randomize_servers(AppData *ad);
+static const char *_primary_server(AppData *ad);
+static void _populate_station_request(Station_Download_Context *d_ctx, AppData *ad, const char *search_type, const char *search_term);
+static void _issue_station_request(Ecore_Con_Url **url_out, Station_Download_Context *d_ctx);
+static void _retry_next_server_station(Ecore_Con_Url *old_url, Station_Download_Context *d_ctx);
+static void _populate_counter_request(Counter_Download_Context *c_ctx, AppData *ad, const char *uuid);
+static void _issue_counter_request(Ecore_Con_Url **url_out, Counter_Download_Context *c_ctx);
+static void _retry_next_server_counter(Ecore_Con_Url *old_url, Counter_Download_Context *c_ctx);
 
 void
 http_init(AppData *ad)
@@ -40,6 +68,10 @@ http_init(AppData *ad)
    ecore_con_init();
    ecore_event_handler_add(ECORE_CON_EVENT_URL_DATA, _url_data_cb, ad);
    ecore_event_handler_add(ECORE_CON_EVENT_URL_COMPLETE, _url_complete_cb, ad);
+
+   _refresh_api_servers(ad);
+   _randomize_servers(ad);
+   ad->api_selected = _primary_server(ad);
 }
 
 void
@@ -51,7 +83,6 @@ http_shutdown(void)
 void
 http_search_stations(AppData *ad, const char *search_term, const char *search_type)
 {
-   char url_str[1024];
    Ecore_Con_Url *url;
    Station_Download_Context *d_ctx;
 
@@ -60,13 +91,27 @@ http_search_stations(AppData *ad, const char *search_term, const char *search_ty
    d_ctx = calloc(1, sizeof(Station_Download_Context));
    d_ctx->base.type = DOWNLOAD_TYPE_STATIONS;
    d_ctx->base.ad = ad;
-
-   snprintf(url_str, sizeof(url_str), "http://de2.api.radio-browser.info/xml/stations/search?%s=%s",
-            search_type, search_term);
-
-   url = ecore_con_url_new(url_str);
+   _populate_station_request(d_ctx, ad, search_type, search_term);
+   _issue_station_request(&url, d_ctx);
    ecore_con_url_additional_header_add(url, "User-Agent", "eradio/1.0");
    ecore_con_url_data_set(url, d_ctx);
+   ecore_con_url_get(url);
+}
+
+void
+http_station_click_counter(AppData *ad, const char *uuid)
+{
+   if (!uuid || !uuid[0]) return;
+
+   Counter_Download_Context *c_ctx = calloc(1, sizeof(Counter_Download_Context));
+   c_ctx->base.type = DOWNLOAD_TYPE_COUNTER;
+   c_ctx->base.ad = ad;
+   _populate_counter_request(c_ctx, ad, uuid);
+
+   Ecore_Con_Url *url;
+   _issue_counter_request(&url, c_ctx);
+   ecore_con_url_additional_header_add(url, "User-Agent", "eradio/1.0");
+   ecore_con_url_data_set(url, c_ctx);
    ecore_con_url_get(url);
 }
 
@@ -162,9 +207,17 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
 
     ad = d_ctx->base.ad;
 
+    if (ev->status != 200)
+      {
+         printf("HTTP error %d on %s, trying fallback...\n", ev->status, ecore_con_url_url_get(ev->url_con));
+         _retry_next_server_station(ev->url_con, d_ctx);
+         return;
+      }
+
     if (!d_ctx->ctxt)
       {
-         free(d_ctx);
+         printf("Error: no parser context; retrying next server...\n");
+         _retry_next_server_station(ev->url_con, d_ctx);
          return;
       }
 
@@ -175,7 +228,8 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
 
     if (doc == NULL)
     {
-        printf("Error: could not parse XML\n");
+        printf("Error: could not parse XML; trying fallback...\n");
+        _retry_next_server_station(ev->url_con, ecore_con_url_data_get(ev->url_con));
         return;
     }
 
@@ -276,7 +330,207 @@ _url_complete_cb(void *data, int type, void *event_info)
       _handle_station_list_complete(ev);
     else if (ctx->type == DOWNLOAD_TYPE_ICON)
       _handle_icon_complete(ev);
+    else if (ctx->type == DOWNLOAD_TYPE_COUNTER)
+      {
+         if (ev->status != 200)
+           {
+              printf("HTTP error %d on %s, trying fallback counter...\n", ev->status, ecore_con_url_url_get(ev->url_con));
+              _retry_next_server_counter(ev->url_con, (Counter_Download_Context *)ctx);
+              return ECORE_CALLBACK_PASS_ON;
+           }
+         // No further action needed; just free context
+         free(ctx);
+      }
 
     ecore_con_url_free(ev->url_con);
     return ECORE_CALLBACK_PASS_ON;
+}
+
+// -------- Helper functions for API server discovery & selection ---------
+
+static void _add_unique_server(AppData *ad, const char *hostname)
+{
+   if (!hostname || !hostname[0]) return;
+   // ensure uniqueness
+   Eina_List *l;
+   const char *h;
+   EINA_LIST_FOREACH(ad->api_servers, l, h)
+   {
+      if (strcmp(h, hostname) == 0) return;
+   }
+   ad->api_servers = eina_list_append(ad->api_servers, eina_stringshare_add(hostname));
+}
+
+static void _refresh_api_servers(AppData *ad)
+{
+   // Resolve all.api.radio-browser.info to get all server IPs
+   struct addrinfo hints = {0}, *res = NULL, *p;
+   hints.ai_family = AF_UNSPEC;
+   hints.ai_socktype = SOCK_STREAM;
+   int ret = getaddrinfo("all.api.radio-browser.info", NULL, &hints, &res);
+   if (ret != 0)
+   {
+      printf("DNS lookup failed: %s\n", gai_strerror(ret));
+      return;
+   }
+
+   for (p = res; p != NULL; p = p->ai_next)
+   {
+      char host[NI_MAXHOST];
+      // Reverse DNS to get human-readable server names
+      int r = getnameinfo(p->ai_addr, p->ai_addrlen, host, sizeof(host), NULL, 0, NI_NAMEREQD);
+      if (r == 0)
+      {
+         _add_unique_server(ad, host);
+      }
+      else
+      {
+         // Fallback: if reverse lookup fails, use the numeric address
+         char addrstr[INET6_ADDRSTRLEN] = {0};
+         void *addr = NULL;
+         if (p->ai_family == AF_INET)
+           addr = &((struct sockaddr_in *)p->ai_addr)->sin_addr;
+         else if (p->ai_family == AF_INET6)
+           addr = &((struct sockaddr_in6 *)p->ai_addr)->sin6_addr;
+         if (addr)
+         {
+            inet_ntop(p->ai_family, addr, addrstr, sizeof(addrstr));
+            _add_unique_server(ad, addrstr);
+         }
+      }
+   }
+
+   freeaddrinfo(res);
+}
+
+static void _randomize_servers(AppData *ad)
+{
+   // Fisher-Yates shuffle on an array copy of the list
+   int n = eina_list_count(ad->api_servers);
+   if (n <= 1) return;
+   char **arr = calloc(n, sizeof(char *));
+   Eina_List *l; const char *h; int i = 0;
+   EINA_LIST_FOREACH(ad->api_servers, l, h) arr[i++] = (char *)h;
+   srand((unsigned int)time(NULL));
+   for (int j = n - 1; j > 0; j--)
+   {
+      int k = rand() % (j + 1);
+      char *tmp = arr[j]; arr[j] = arr[k]; arr[k] = tmp;
+   }
+   // rebuild list in randomized order
+   eina_list_free(ad->api_servers);
+   ad->api_servers = NULL;
+   for (int j = 0; j < n; j++) ad->api_servers = eina_list_append(ad->api_servers, arr[j]);
+   free(arr);
+}
+
+static const char *_primary_server(AppData *ad)
+{
+   if (!ad->api_servers) return NULL;
+   return eina_list_data_get(ad->api_servers);
+}
+
+static void _prepend_selected_as_primary(Eina_List **list, const char *selected)
+{
+   if (!selected || !list) return;
+   Eina_List *l; const char *h; Eina_List *node = NULL;
+   EINA_LIST_FOREACH(*list, l, h)
+   {
+      if ((h == selected) || (h && selected && strcmp(h, selected) == 0))
+      {
+         node = l;
+         break;
+      }
+   }
+   if (node)
+   {
+      const char *data = node->data;
+      *list = eina_list_remove_list(*list, node);
+      *list = eina_list_prepend(*list, data);
+   }
+}
+
+static void _populate_station_request(Station_Download_Context *d_ctx, AppData *ad, const char *search_type, const char *search_term)
+{
+   strncpy(d_ctx->search_type, search_type ? search_type : "name", sizeof(d_ctx->search_type) - 1);
+   strncpy(d_ctx->search_term, search_term ? search_term : "", sizeof(d_ctx->search_term) - 1);
+   d_ctx->servers = eina_list_clone(ad->api_servers);
+   _prepend_selected_as_primary(&d_ctx->servers, ad->api_selected);
+   d_ctx->current = d_ctx->servers; // start at primary
+}
+
+static void _issue_station_request(Ecore_Con_Url **url_out, Station_Download_Context *d_ctx)
+{
+   const char *server = d_ctx->current ? (const char *)d_ctx->current->data : NULL;
+   char url_str[1024];
+   if (server)
+      snprintf(url_str, sizeof(url_str), "http://%s/xml/stations/search?%s=%s", server, d_ctx->search_type, d_ctx->search_term);
+   else
+      snprintf(url_str, sizeof(url_str), "http://de2.api.radio-browser.info/xml/stations/search?%s=%s", d_ctx->search_type, d_ctx->search_term);
+   *url_out = ecore_con_url_new(url_str);
+}
+
+static void _retry_next_server_station(Ecore_Con_Url *old_url, Station_Download_Context *d_ctx)
+{
+   if (d_ctx->current && d_ctx->current->next)
+   {
+      d_ctx->current = d_ctx->current->next;
+      Ecore_Con_Url *new_url;
+      _issue_station_request(&new_url, d_ctx);
+      ecore_con_url_additional_header_add(new_url, "User-Agent", "eradio/1.0");
+      ecore_con_url_data_set(new_url, d_ctx);
+      ecore_con_url_get(new_url);
+      ecore_con_url_free(old_url);
+   }
+   else
+   {
+      printf("All servers exhausted; failing request.\n");
+      ecore_con_url_free(old_url);
+      // free context and notify UI of failure
+      if (d_ctx->ctxt)
+      {
+         xmlFreeParserCtxt(d_ctx->ctxt);
+         d_ctx->ctxt = NULL;
+      }
+      free(d_ctx);
+   }
+}
+
+static void _populate_counter_request(Counter_Download_Context *c_ctx, AppData *ad, const char *uuid)
+{
+   strncpy(c_ctx->stationuuid, uuid, sizeof(c_ctx->stationuuid) - 1);
+   c_ctx->servers = eina_list_clone(ad->api_servers);
+   _prepend_selected_as_primary(&c_ctx->servers, ad->api_selected);
+   c_ctx->current = c_ctx->servers;
+}
+
+static void _issue_counter_request(Ecore_Con_Url **url_out, Counter_Download_Context *c_ctx)
+{
+   const char *server = c_ctx->current ? (const char *)c_ctx->current->data : NULL;
+   char url_str[1024];
+   if (server)
+      snprintf(url_str, sizeof(url_str), "http://%s/xml/url/%s", server, c_ctx->stationuuid);
+   else
+      snprintf(url_str, sizeof(url_str), "http://de2.api.radio-browser.info/xml/url/%s", c_ctx->stationuuid);
+   *url_out = ecore_con_url_new(url_str);
+}
+
+static void _retry_next_server_counter(Ecore_Con_Url *old_url, Counter_Download_Context *c_ctx)
+{
+   if (c_ctx->current && c_ctx->current->next)
+   {
+      c_ctx->current = c_ctx->current->next;
+      Ecore_Con_Url *new_url;
+      _issue_counter_request(&new_url, c_ctx);
+      ecore_con_url_additional_header_add(new_url, "User-Agent", "eradio/1.0");
+      ecore_con_url_data_set(new_url, c_ctx);
+      ecore_con_url_get(new_url);
+      ecore_con_url_free(old_url);
+   }
+   else
+   {
+      printf("All servers exhausted for counter; giving up.\n");
+      ecore_con_url_free(old_url);
+      free(c_ctx);
+   }
 }
