@@ -25,11 +25,14 @@ typedef struct _AppData
    Evas_Object *emotion;
    Evas_Object *search_entry;
    Evas_Object *search_hoversel;
+   Evas_Object *server_hoversel;
    Evas_Object *play_pause_btn;
    Evas_Object *stop_btn;
    Evas_Object *search_btn;
    Evas_Object *search_bar;
    Eina_List *stations;
+   Eina_List *api_servers;    // list of strings (hostnames)
+   const char *api_selected;  // currently selected server hostname
    Eina_Bool playing;
    Eina_Hash *favorites;
    Eina_List *favorites_stations;

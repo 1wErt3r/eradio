@@ -7,19 +7,10 @@ static void _favorite_btn_clicked_cb(void *data, Evas_Object *obj, void *event_i
 static void _favorite_remove_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 
 static void
-_station_click_counter_request(Station *st)
+_station_click_counter_request(AppData *ad, Station *st)
 {
-   char url_str[1024];
-   Ecore_Con_Url *url;
-
    if (!st || !st->stationuuid) return;
-
-   snprintf(url_str, sizeof(url_str), "http://de2.api.radio-browser.info/xml/url/%s",
-            st->stationuuid);
-
-   url = ecore_con_url_new(url_str);
-   ecore_con_url_additional_header_add(url, "User-Agent", "eradio/1.0");
-   ecore_con_url_get(url);
+   http_station_click_counter(ad, st->stationuuid);
 }
 
 void
@@ -31,7 +22,7 @@ _list_item_selected_cb(void *data, Evas_Object *obj, void *event_info)
 
    if (!st) return;
 
-   _station_click_counter_request(st);
+   _station_click_counter_request(ad, st);
    radio_player_play(ad, st->url);
 }
 

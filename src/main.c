@@ -15,6 +15,7 @@ elm_main(int argc, char **argv)
    favorites_init(&ad);
    favorites_load(&ad);
    http_init(&ad);
+   ui_update_server_list(&ad);
    radio_player_init(&ad);
 
    elm_run();
