@@ -88,7 +88,7 @@ http_shutdown(void)
 }
 
 void
-http_search_stations(AppData *ad, const char *search_term, const char *search_type, const char *order, Eina_Bool reverse, int offset, int limit, Eina_Bool new_search)
+http_search_stations(AppData *ad, const char *search_term, const char *search_type, const char *order, Eina_Bool reverse, Eina_Bool new_search)
 {
    Ecore_Con_Url *url;
    Station_Download_Context *d_ctx;
@@ -98,8 +98,6 @@ http_search_stations(AppData *ad, const char *search_term, const char *search_ty
    d_ctx = calloc(1, sizeof(Station_Download_Context));
    d_ctx->base.type = DOWNLOAD_TYPE_STATIONS;
    d_ctx->base.ad = ad;
-   d_ctx->offset = offset;
-   d_ctx->limit = limit;
    d_ctx->new_search = new_search;
    _populate_station_request(d_ctx, ad, search_type, search_term, order, reverse);
    _issue_station_request(&url, d_ctx);
@@ -149,7 +147,7 @@ _search_btn_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_inf
    const char *order = elm_object_text_get(ad->sort_hoversel);
    Eina_Bool reverse = elm_check_state_get(ad->reverse_check);
    ad->search_offset = 0; // Reset offset for a new search
-   http_search_stations(ad, search_term, search_type, order, reverse, ad->search_offset, 100, EINA_TRUE);
+   http_search_stations(ad, search_term, search_type, order, reverse, EINA_TRUE);
 }
 
 void
@@ -338,21 +336,7 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
 
     favorites_apply_to_stations(ad);
     if (ad->view_mode == VIEW_SEARCH)
-      station_list_populate(ad, ad->stations, d_ctx->new_search);
-
-    // Determine if "Load More" button should be visible
-    if (d_ctx->new_search)
-    {
-        if (xpathObj->nodesetval->nodeNr > 0)
-            ui_set_load_more_button_visibility(ad, EINA_TRUE);
-        else
-            ui_set_load_more_button_visibility(ad, EINA_FALSE);
-    }
-    else
-    {
-        if (xpathObj->nodesetval->nodeNr == 0)
-            ui_set_load_more_button_visibility(ad, EINA_FALSE);
-    }
+      station_list_populate(ad, d_ctx->new_search);
 
     eina_list_free(d_ctx->servers);
     free(d_ctx);
@@ -532,8 +516,8 @@ static void _issue_station_request(Ecore_Con_Url **url_out, Station_Download_Con
 
    // Add sorting and pagination params
    char other_params[512];
-   snprintf(other_params, sizeof(other_params), "&offset=%d&limit=%d&order=%s&reverse=%s",
-            d_ctx->offset, d_ctx->limit, d_ctx->order, d_ctx->reverse ? "true" : "false");
+   snprintf(other_params, sizeof(other_params), "&limit=%d&order=%s&reverse=%s",
+            100000, d_ctx->order, d_ctx->reverse ? "true" : "false");
 
    strncat(query_params, other_params, sizeof(query_params) - strlen(query_params) - 1);
 

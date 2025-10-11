@@ -200,6 +200,11 @@ ui_create(AppData *ad)
    elm_box_pack_end(box, ad->list);
    evas_object_show(ad->list);
 
+   ad->load_more_btn = elm_button_add(ad->win);
+   elm_object_text_set(ad->load_more_btn, "Load More");
+   elm_box_pack_end(box, ad->load_more_btn);
+   evas_object_hide(ad->load_more_btn); // Hide by default
+
    ad->controls_toolbar = elm_toolbar_add(ad->win);
    elm_toolbar_shrink_mode_set(ad->controls_toolbar, ELM_TOOLBAR_SHRINK_MENU);
    elm_toolbar_homogeneous_set(ad->controls_toolbar, EINA_TRUE);
@@ -220,11 +225,6 @@ ui_create(AppData *ad)
    ad->play_pause_item = elm_toolbar_item_append(ad->controls_toolbar, "media-playback-start", "Play/Pause", _play_pause_btn_clicked_cb, ad);
    ad->stop_item = elm_toolbar_item_append(ad->controls_toolbar, "media-playback-stop", "Stop", _stop_btn_clicked_cb, ad);
 
-   ad->load_more_btn = elm_button_add(ad->win);
-   elm_object_text_set(ad->load_more_btn, "Load More");
-   elm_box_pack_end(box, ad->load_more_btn);
-   evas_object_hide(ad->load_more_btn); // Hide by default
-
    evas_object_smart_callback_add(ad->search_btn, "clicked", _search_btn_clicked_cb, ad);
    evas_object_smart_callback_add(ad->search_entry, "activated", _search_entry_activated_cb, ad);
    evas_object_smart_callback_add(ad->list, "selected", _list_item_selected_cb, ad);
@@ -235,7 +235,7 @@ ui_create(AppData *ad)
    ad->search_offset = 0; // Initialize offset
    evas_object_show(ad->search_bar);
    if (ad->stations)
-     station_list_populate(ad, ad->stations, EINA_TRUE);
+     station_list_populate(ad, EINA_TRUE);
    else
      station_list_clear(ad);
 
@@ -320,6 +320,8 @@ static void
 _tb_favorites_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    AppData *ad = data;
+   if (ad->view_mode == VIEW_FAVORITES) return;
+
    ad->view_mode = VIEW_FAVORITES;
    // Remove search bar from layout entirely in Favorites view
    if (ad->main_box && ad->search_bar)
@@ -328,13 +330,15 @@ _tb_favorites_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_i
    if (ad->separator) evas_object_hide(ad->separator);
    ui_set_load_more_button_visibility(ad, EINA_FALSE);
    favorites_rebuild_station_list(ad);
-   station_list_populate(ad, ad->favorites_stations, EINA_TRUE);
+   station_list_populate_favorites(ad);
 }
 
 static void
 _tb_search_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    AppData *ad = data;
+   if (ad->view_mode == VIEW_SEARCH) return;
+
    ad->view_mode = VIEW_SEARCH;
    // Reinsert search bar right after the top toolbar to restore layout
    if (ad->main_box && ad->search_bar && ad->top_toolbar)
@@ -343,7 +347,7 @@ _tb_search_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_info
    if (ad->separator) evas_object_show(ad->separator);
    ui_set_load_more_button_visibility(ad, EINA_FALSE);
    if (ad->stations)
-     station_list_populate(ad, ad->stations, EINA_TRUE);
+     station_list_populate(ad, EINA_TRUE);
    else
      station_list_clear(ad);
 }
@@ -352,12 +356,7 @@ static void
 _load_more_btn_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
 {
    AppData *ad = data;
-   const char *search_term = elm_object_text_get(ad->search_entry);
-   const char *search_type = elm_object_text_get(ad->search_hoversel);
-   const char *order = elm_object_text_get(ad->sort_hoversel);
-   Eina_Bool reverse = elm_check_state_get(ad->reverse_check);
-   ad->search_offset += 100; // Increment offset for next page
-   http_search_stations(ad, search_term, search_type, order, reverse, ad->search_offset, 100, EINA_FALSE);
+   station_list_populate(ad, EINA_FALSE);
 }
 
 void ui_set_load_more_button_visibility(AppData *ad, Eina_Bool visible)

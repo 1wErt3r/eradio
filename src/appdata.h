@@ -51,4 +51,5 @@ typedef struct _AppData
    Eina_List *favorites_stations;
    ViewMode view_mode;
    int search_offset;
+   int displayed_stations_count;
 } AppData;
