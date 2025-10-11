@@ -32,12 +32,17 @@ typedef struct _AppData
    Evas_Object *search_btn;
    Evas_Object *load_more_btn;
    Evas_Object *search_bar;
+   Evas_Object *filters_toggle_btn;
+   Evas_Object *filters_box;
+   Evas_Object *progressbar;   // loading indicator
    Evas_Object *sort_hoversel;
    Evas_Object *reverse_check;
    Eina_List *stations;
    Eina_List *api_servers;    // list of strings (hostnames)
    const char *api_selected;  // currently selected server hostname
    Eina_Bool playing;
+   Eina_Bool filters_visible;
+   int loading_requests;       // refcount of in-flight HTTP requests
    Eina_Hash *favorites;
    Eina_List *favorites_stations;
    ViewMode view_mode;

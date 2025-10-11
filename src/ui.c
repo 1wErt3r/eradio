@@ -10,6 +10,7 @@ static void _hoversel_item_selected_cb(void *data, Evas_Object *obj, void *event
 static void _tb_favorites_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 static void _tb_search_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 static void _server_item_selected_cb(void *data, Evas_Object *obj, void *event_info);
+static void _filters_toggle_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 
 // Forward declarations for callbacks
 void _play_pause_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
@@ -97,11 +98,27 @@ ui_create(AppData *ad)
    evas_object_show(ad->search_entry);
    elm_object_focus_set(ad->search_entry, EINA_TRUE);
 
-   // Search options in a separate box
+   // Filters toggle button
+   ad->filters_toggle_btn = elm_button_add(ad->win);
+   elm_object_text_set(ad->filters_toggle_btn, "Filters ▾");
+   elm_box_pack_end(ad->search_bar, ad->filters_toggle_btn);
+   evas_object_show(ad->filters_toggle_btn);
+   evas_object_smart_callback_add(ad->filters_toggle_btn, "clicked", _filters_toggle_btn_clicked_cb, ad);
+
+   // Collapsible filters box (hidden by default)
+   ad->filters_box = elm_box_add(ad->win);
+   elm_box_padding_set(ad->filters_box, 10, 10);
+   evas_object_size_hint_weight_set(ad->filters_box, EVAS_HINT_EXPAND, 0);
+   evas_object_size_hint_align_set(ad->filters_box, EVAS_HINT_FILL, 0);
+   elm_box_pack_end(ad->search_bar, ad->filters_box);
+   evas_object_hide(ad->filters_box);
+   ad->filters_visible = EINA_FALSE;
+
+   // Search options inside the filters box
    Evas_Object *search_options_box = elm_box_add(ad->win);
    elm_box_horizontal_set(search_options_box, EINA_TRUE);
    elm_box_padding_set(search_options_box, 10, 0);
-   elm_box_pack_end(ad->search_bar, search_options_box);
+   elm_box_pack_end(ad->filters_box, search_options_box);
    evas_object_show(search_options_box);
 
    Evas_Object *lbl;
@@ -158,13 +175,23 @@ ui_create(AppData *ad)
    ad->server_hoversel = elm_hoversel_add(ad->win);
    elm_hoversel_hover_parent_set(ad->server_hoversel, ad->win);
    elm_object_text_set(ad->server_hoversel, "server");
-   elm_box_pack_end(ad->search_bar, ad->server_hoversel);
+   elm_box_pack_end(ad->filters_box, ad->server_hoversel);
    evas_object_show(ad->server_hoversel);
 
    ad->search_btn = elm_button_add(ad->win);
    elm_object_text_set(ad->search_btn, "Search");
    elm_box_pack_end(ad->search_bar, ad->search_btn);
    evas_object_show(ad->search_btn);
+
+   // Loading indicator (spinner)
+   ad->progressbar = elm_progressbar_add(ad->win);
+   elm_object_style_set(ad->progressbar, "wheel");
+   elm_progressbar_pulse_set(ad->progressbar, EINA_TRUE);
+   evas_object_size_hint_weight_set(ad->progressbar, 0.0, 0.0);
+   evas_object_size_hint_align_set(ad->progressbar, 0.5, 0.5);
+   elm_box_pack_end(ad->search_bar, ad->progressbar);
+   evas_object_hide(ad->progressbar);
+   ad->loading_requests = 0;
 
    /* Separator */
    Evas_Object *sep = elm_separator_add(ad->win);
@@ -236,6 +263,49 @@ ui_create(AppData *ad)
 
    evas_object_resize(ad->win, 480, 800);
    evas_object_show(ad->win);
+}
+
+static void
+_filters_toggle_btn_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
+{
+   AppData *ad = data;
+   if (!ad) return;
+   ad->filters_visible = !ad->filters_visible;
+   if (ad->filters_visible)
+   {
+      elm_object_text_set(ad->filters_toggle_btn, "Filters ▴");
+      evas_object_show(ad->filters_box);
+   }
+   else
+   {
+      elm_object_text_set(ad->filters_toggle_btn, "Filters ▾");
+      evas_object_hide(ad->filters_box);
+   }
+}
+
+void ui_loading_start(AppData *ad)
+{
+   if (!ad || !ad->progressbar) return;
+   ad->loading_requests++;
+   if (ad->loading_requests == 1)
+   {
+      evas_object_show(ad->progressbar);
+      elm_progressbar_pulse(ad->progressbar, EINA_TRUE);
+      elm_object_text_set(ad->statusbar, "Loading...");
+   }
+}
+
+void ui_loading_stop(AppData *ad)
+{
+   if (!ad || !ad->progressbar) return;
+   if (ad->loading_requests > 0)
+     ad->loading_requests--;
+   if (ad->loading_requests == 0)
+   {
+      elm_progressbar_pulse(ad->progressbar, EINA_FALSE);
+      evas_object_hide(ad->progressbar);
+      elm_object_text_set(ad->statusbar, "");
+   }
 }
 
 void ui_update_server_list(AppData *ad)

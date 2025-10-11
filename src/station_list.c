@@ -73,7 +73,6 @@ station_list_populate(AppData *ad, Eina_List *stations, Eina_Bool new_search)
 
         Elm_Object_Item *li = elm_list_item_append(ad->list, st->name, icon, fav_btn, NULL, NULL);
         elm_object_item_data_set(li, st);
-        evas_object_smart_callback_add(ad->list, "selected", _list_item_selected_cb, ad);
 
         // Attach callback only when a button exists
         if (fav_btn)
@@ -107,6 +106,7 @@ station_list_populate(AppData *ad, Eina_List *stations, Eina_Bool new_search)
                }
           }
     }
+    evas_object_smart_callback_add(ad->list, "selected", _list_item_selected_cb, ad);
     elm_list_go(ad->list);
 }
 

@@ -105,6 +105,7 @@ http_search_stations(AppData *ad, const char *search_term, const char *search_ty
    _issue_station_request(&url, d_ctx);
    ecore_con_url_additional_header_add(url, "User-Agent", "eradio/1.0");
    ecore_con_url_data_set(url, d_ctx);
+   ui_loading_start(ad);
    ecore_con_url_get(url);
 }
 
@@ -135,6 +136,7 @@ http_download_icon(AppData *ad, Elm_Object_Item *list_item, const char *url_str)
     icon_ctx->base.ad = ad;
     icon_ctx->list_item = list_item;
     ecore_con_url_data_set(url, icon_ctx);
+    ui_loading_start(ad);
     ecore_con_url_get(url);
 }
 
@@ -382,6 +384,7 @@ _url_complete_cb(void *data, int type, void *event_info)
 {
     Ecore_Con_Event_Url_Complete *ev = event_info;
     Download_Context *ctx = ecore_con_url_data_get(ev->url_con);
+    AppData *ad;
 
     if (!ctx)
       {
@@ -389,13 +392,19 @@ _url_complete_cb(void *data, int type, void *event_info)
          return ECORE_CALLBACK_PASS_ON;
       }
 
+    ad = ctx->ad;
+
     if (ctx->type == DOWNLOAD_TYPE_STATIONS)
       {
          if (_handle_station_list_complete(ev))
            return ECORE_CALLBACK_PASS_ON;
+         ui_loading_stop(ad);
       }
     else if (ctx->type == DOWNLOAD_TYPE_ICON)
-      _handle_icon_complete(ev);
+      {
+         _handle_icon_complete(ev);
+         ui_loading_stop(ad);
+      }
     else if (ctx->type == DOWNLOAD_TYPE_COUNTER)
       {
          if (ev->status != 200)
@@ -408,6 +417,7 @@ _url_complete_cb(void *data, int type, void *event_info)
          Counter_Download_Context *c_ctx = (Counter_Download_Context *)ctx;
          eina_list_free(c_ctx->servers);
          free(c_ctx);
+         ui_loading_stop(ad);
       }
 
     ecore_con_url_free(ev->url_con);
@@ -565,6 +575,7 @@ static void _retry_next_server_station(Ecore_Con_Url *old_url, Station_Download_
       }
       eina_list_free(d_ctx->servers);
       free(d_ctx);
+      ui_loading_stop(((Download_Context *)d_ctx)->ad);
    }
 }
 
@@ -608,5 +619,6 @@ static void _retry_next_server_counter(Ecore_Con_Url *old_url, Counter_Download_
       ecore_con_url_free(old_url);
       eina_list_free(c_ctx->servers);
       free(c_ctx);
+      ui_loading_stop(((Download_Context *)c_ctx)->ad);
    }
 }
