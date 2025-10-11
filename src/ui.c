@@ -108,6 +108,35 @@ ui_create(AppData *ad)
    elm_box_pack_end(ad->search_bar, ad->search_hoversel);
    evas_object_show(ad->search_hoversel);
 
+   ad->sort_hoversel = elm_hoversel_add(ad->win);
+   elm_hoversel_hover_parent_set(ad->sort_hoversel, ad->win);
+   elm_object_text_set(ad->sort_hoversel, "name");
+   elm_hoversel_item_add(ad->sort_hoversel, "name", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "url", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "homepage", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "favicon", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "tags", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "country", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "state", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "language", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "votes", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "codec", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "bitrate", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "lastcheckok", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "lastchecktime", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "clicktimestamp", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "clickcount", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "clicktrend", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "changetimestamp", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_hoversel_item_add(ad->sort_hoversel, "random", NULL, ELM_ICON_NONE, _hoversel_item_selected_cb, NULL);
+   elm_box_pack_end(ad->search_bar, ad->sort_hoversel);
+   evas_object_show(ad->sort_hoversel);
+
+   ad->reverse_check = elm_check_add(ad->win);
+   elm_object_text_set(ad->reverse_check, "Reverse");
+   elm_box_pack_end(ad->search_bar, ad->reverse_check);
+   evas_object_show(ad->reverse_check);
+
    // Server selection hoversel, populated after HTTP init discovers servers
    ad->server_hoversel = elm_hoversel_add(ad->win);
    elm_hoversel_hover_parent_set(ad->server_hoversel, ad->win);
@@ -157,7 +186,14 @@ ui_create(AppData *ad)
 
    ad->load_more_btn = elm_button_add(ad->win);
    elm_object_text_set(ad->load_more_btn, "Load More");
-   elm_box_pack_end(controls_hbox, ad->load_more_btn);
+   Evas_Object *load_more_box = elm_box_add(ad->win);
+   elm_box_padding_set(load_more_box, 10, 0);
+   elm_box_align_set(load_more_box, 0.5, 1.0);
+   evas_object_size_hint_weight_set(load_more_box, EVAS_HINT_EXPAND, 0);
+   evas_object_size_hint_align_set(load_more_box, EVAS_HINT_FILL, 0);
+   elm_box_pack_end(load_more_box, ad->load_more_btn);
+   elm_box_pack_end(box, load_more_box);
+   evas_object_show(load_more_box);
    evas_object_show(ad->load_more_btn);
 
    evas_object_smart_callback_add(ad->play_pause_btn, "clicked", _play_pause_btn_clicked_cb, ad);
@@ -171,7 +207,6 @@ ui_create(AppData *ad)
    /* Default to Search view on startup */
    ad->view_mode = VIEW_SEARCH;
    ad->search_offset = 0; // Initialize offset
-   ui_set_load_more_button_visibility(ad, EINA_FALSE); // Initially hide load more button
    evas_object_show(ad->search_bar);
    if (ad->stations)
      station_list_populate(ad, ad->stations, EINA_TRUE);
@@ -236,8 +271,10 @@ _load_more_btn_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_
    AppData *ad = data;
    const char *search_term = elm_object_text_get(ad->search_entry);
    const char *search_type = elm_object_text_get(ad->search_hoversel);
+   const char *order = elm_object_text_get(ad->sort_hoversel);
+   Eina_Bool reverse = elm_check_state_get(ad->reverse_check);
    ad->search_offset += 100; // Increment offset for next page
-   http_search_stations(ad, search_term, search_type, ad->search_offset, 100, EINA_FALSE);
+   http_search_stations(ad, search_term, search_type, order, reverse, ad->search_offset, 100, EINA_FALSE);
 }
 
 void ui_set_load_more_button_visibility(AppData *ad, Eina_Bool visible)

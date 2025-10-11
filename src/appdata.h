@@ -31,6 +31,8 @@ typedef struct _AppData
    Evas_Object *search_btn;
    Evas_Object *load_more_btn;
    Evas_Object *search_bar;
+   Evas_Object *sort_hoversel;
+   Evas_Object *reverse_check;
    Eina_List *stations;
    Eina_List *api_servers;    // list of strings (hostnames)
    const char *api_selected;  // currently selected server hostname

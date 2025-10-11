@@ -33,6 +33,8 @@ typedef struct _Station_Download_Context
    Eina_List *current;     // current server node
    char search_type[64];
    char search_term[512];
+   char order[64];
+   Eina_Bool reverse;
    int offset;
    int limit;
    Eina_Bool new_search;
@@ -59,7 +61,7 @@ static Eina_Bool _url_complete_cb(void *data, int type, void *event_info);
 static void _refresh_api_servers(AppData *ad);
 static void _randomize_servers(AppData *ad);
 static const char *_primary_server(AppData *ad);
-static void _populate_station_request(Station_Download_Context *d_ctx, AppData *ad, const char *search_type, const char *search_term);
+static void _populate_station_request(Station_Download_Context *d_ctx, AppData *ad, const char *search_type, const char *search_term, const char *order, Eina_Bool reverse);
 static void _issue_station_request(Ecore_Con_Url **url_out, Station_Download_Context *d_ctx);
 static void _retry_next_server_station(Ecore_Con_Url *old_url, Station_Download_Context *d_ctx);
 static void _populate_counter_request(Counter_Download_Context *c_ctx, AppData *ad, const char *uuid);
@@ -85,7 +87,7 @@ http_shutdown(void)
 }
 
 void
-http_search_stations(AppData *ad, const char *search_term, const char *search_type, int offset, int limit, Eina_Bool new_search)
+http_search_stations(AppData *ad, const char *search_term, const char *search_type, const char *order, Eina_Bool reverse, int offset, int limit, Eina_Bool new_search)
 {
    Ecore_Con_Url *url;
    Station_Download_Context *d_ctx;
@@ -98,7 +100,7 @@ http_search_stations(AppData *ad, const char *search_term, const char *search_ty
    d_ctx->offset = offset;
    d_ctx->limit = limit;
    d_ctx->new_search = new_search;
-   _populate_station_request(d_ctx, ad, search_type, search_term);
+   _populate_station_request(d_ctx, ad, search_type, search_term, order, reverse);
    _issue_station_request(&url, d_ctx);
    ecore_con_url_additional_header_add(url, "User-Agent", "eradio/1.0");
    ecore_con_url_data_set(url, d_ctx);
@@ -140,8 +142,10 @@ _search_btn_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_inf
    AppData *ad = data;
    const char *search_term = elm_object_text_get(ad->search_entry);
    const char *search_type = elm_object_text_get(ad->search_hoversel);
+   const char *order = elm_object_text_get(ad->sort_hoversel);
+   Eina_Bool reverse = elm_check_state_get(ad->reverse_check);
    ad->search_offset = 0; // Reset offset for a new search
-   http_search_stations(ad, search_term, search_type, ad->search_offset, 100, EINA_TRUE);
+   http_search_stations(ad, search_term, search_type, order, reverse, ad->search_offset, 100, EINA_TRUE);
 }
 
 void
@@ -308,10 +312,18 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
       station_list_populate(ad, ad->stations, d_ctx->new_search);
 
     // Determine if "Load More" button should be visible
-    if (xpathObj->nodesetval->nodeNr == d_ctx->limit)
-      ui_set_load_more_button_visibility(ad, EINA_TRUE);
+    if (d_ctx->new_search)
+    {
+        if (xpathObj->nodesetval->nodeNr > 0)
+            ui_set_load_more_button_visibility(ad, EINA_TRUE);
+        else
+            ui_set_load_more_button_visibility(ad, EINA_FALSE);
+    }
     else
-      ui_set_load_more_button_visibility(ad, EINA_FALSE);
+    {
+        if (xpathObj->nodesetval->nodeNr == 0)
+            ui_set_load_more_button_visibility(ad, EINA_FALSE);
+    }
 
     xmlXPathFreeObject(xpathObj);
     xmlXPathFreeContext(xpathCtx);
@@ -470,10 +482,12 @@ static void _prepend_selected_as_primary(Eina_List **list, const char *selected)
    }
 }
 
-static void _populate_station_request(Station_Download_Context *d_ctx, AppData *ad, const char *search_type, const char *search_term)
+static void _populate_station_request(Station_Download_Context *d_ctx, AppData *ad, const char *search_type, const char *search_term, const char *order, Eina_Bool reverse)
 {
    strncpy(d_ctx->search_type, search_type ? search_type : "name", sizeof(d_ctx->search_type) - 1);
    strncpy(d_ctx->search_term, search_term ? search_term : "", sizeof(d_ctx->search_term) - 1);
+   strncpy(d_ctx->order, order ? order : "name", sizeof(d_ctx->order) - 1);
+   d_ctx->reverse = reverse;
    d_ctx->servers = eina_list_clone(ad->api_servers);
    _prepend_selected_as_primary(&d_ctx->servers, ad->api_selected);
    d_ctx->current = d_ctx->servers; // start at primary
@@ -482,11 +496,25 @@ static void _populate_station_request(Station_Download_Context *d_ctx, AppData *
 static void _issue_station_request(Ecore_Con_Url **url_out, Station_Download_Context *d_ctx)
 {
    const char *server = d_ctx->current ? (const char *)d_ctx->current->data : NULL;
-   char url_str[1024];
+   char url_str[2048];
+   char query_params[1024] = {0};
+
+   // Start with the base search params
+   snprintf(query_params, sizeof(query_params), "%s=%s", d_ctx->search_type, d_ctx->search_term);
+
+   // Add sorting and pagination params
+   char other_params[512];
+   snprintf(other_params, sizeof(other_params), "&offset=%d&limit=%d&order=%s&reverse=%s",
+            d_ctx->offset, d_ctx->limit, d_ctx->order, d_ctx->reverse ? "true" : "false");
+
+   strncat(query_params, other_params, sizeof(query_params) - strlen(query_params) - 1);
+
    if (server)
-      snprintf(url_str, sizeof(url_str), "http://%s/xml/stations/search?%s=%s&offset=%d&limit=%d", server, d_ctx->search_type, d_ctx->search_term, d_ctx->offset, d_ctx->limit);
+      snprintf(url_str, sizeof(url_str), "http://%s/xml/stations/search?%s", server, query_params);
    else
-      snprintf(url_str, sizeof(url_str), "http://de2.api.radio-browser.info/xml/stations/search?%s=%s&offset=%d&limit=%d", d_ctx->search_type, d_ctx->search_term, d_ctx->offset, d_ctx->limit);
+      snprintf(url_str, sizeof(url_str), "http://de2.api.radio-browser.info/xml/stations/search?%s", query_params);
+
+   printf("Request URL: %s\n", url_str);
    *url_out = ecore_con_url_new(url_str);
 }
 
@@ -532,6 +560,8 @@ static void _issue_counter_request(Ecore_Con_Url **url_out, Counter_Download_Con
       snprintf(url_str, sizeof(url_str), "http://%s/xml/url/%s", server, c_ctx->stationuuid);
    else
       snprintf(url_str, sizeof(url_str), "http://de2.api.radio-browser.info/xml/url/%s", c_ctx->stationuuid);
+
+   printf("Counter Request URL: %s\n", url_str);
    *url_out = ecore_con_url_new(url_str);
 }
 
