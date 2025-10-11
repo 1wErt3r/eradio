@@ -188,7 +188,7 @@ ui_create(AppData *ad)
    evas_object_show(controls_hbox);
 
    ad->statusbar = elm_label_add(ad->win);
-   elm_object_text_set(ad->statusbar, "Now Playing: ");
+   elm_object_text_set(ad->statusbar, "");
    elm_object_style_set(ad->statusbar, "marquee");
    evas_object_size_hint_weight_set(ad->statusbar, EVAS_HINT_EXPAND, 0);
    evas_object_size_hint_align_set(ad->statusbar, EVAS_HINT_FILL, 0.5);
