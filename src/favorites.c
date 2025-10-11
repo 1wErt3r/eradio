@@ -247,11 +247,16 @@ static Eina_Bool _favorites_rebuild_cb(const Eina_Hash *hash EINA_UNUSED, const 
 
 void favorites_rebuild_station_list(AppData *ad)
 {
-    // free previous list items (shallow as per existing patterns)
-    if (ad->favorites_stations)
+    Station *st;
+    EINA_LIST_FREE(ad->favorites_stations, st)
     {
-        eina_list_free(ad->favorites_stations);
-        ad->favorites_stations = NULL;
+        eina_stringshare_del(st->name);
+        eina_stringshare_del(st->url);
+        eina_stringshare_del(st->favicon);
+        eina_stringshare_del(st->stationuuid);
+        free(st);
     }
+    ad->favorites_stations = NULL;
+
     eina_hash_foreach(ad->favorites, _favorites_rebuild_cb, ad);
 }

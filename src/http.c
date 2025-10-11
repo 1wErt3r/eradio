@@ -111,6 +111,7 @@ http_search_stations(AppData *ad, const char *search_term, const char *search_ty
 void
 http_station_click_counter(AppData *ad, const char *uuid)
 {
+   fprintf(stderr, "LOG: http_station_click_counter: ad=%p, uuid=%s\n", ad, uuid);
    if (!uuid || !uuid[0]) return;
 
    Counter_Download_Context *c_ctx = calloc(1, sizeof(Counter_Download_Context));
@@ -351,6 +352,7 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
             ui_set_load_more_button_visibility(ad, EINA_FALSE);
     }
 
+    eina_list_free(d_ctx->servers);
     free(d_ctx);
 
     xmlXPathFreeObject(xpathObj);
@@ -399,7 +401,9 @@ _url_complete_cb(void *data, int type, void *event_info)
               return ECORE_CALLBACK_PASS_ON;
            }
          // No further action needed; just free context
-         free(ctx);
+         Counter_Download_Context *c_ctx = (Counter_Download_Context *)ctx;
+         eina_list_free(c_ctx->servers);
+         free(c_ctx);
       }
 
     ecore_con_url_free(ev->url_con);
@@ -465,23 +469,9 @@ static void _refresh_api_servers(AppData *ad)
 
 static void _randomize_servers(AppData *ad)
 {
-   // Fisher-Yates shuffle on an array copy of the list
-   int n = eina_list_count(ad->api_servers);
-   if (n <= 1) return;
-   char **arr = calloc(n, sizeof(char *));
-   Eina_List *l; const char *h; int i = 0;
-   EINA_LIST_FOREACH(ad->api_servers, l, h) arr[i++] = (char *)h;
-   srand((unsigned int)time(NULL));
-   for (int j = n - 1; j > 0; j--)
-   {
-      int k = rand() % (j + 1);
-      char *tmp = arr[j]; arr[j] = arr[k]; arr[k] = tmp;
-   }
-   // rebuild list in randomized order
-   eina_list_free(ad->api_servers);
-   ad->api_servers = NULL;
-   for (int j = 0; j < n; j++) ad->api_servers = eina_list_append(ad->api_servers, arr[j]);
-   free(arr);
+   if (!ad->api_servers) return;
+   srand(time(NULL));
+   ad->api_servers = eina_list_shuffle(ad->api_servers, NULL);
 }
 
 static const char *_primary_server(AppData *ad)
@@ -493,20 +483,16 @@ static const char *_primary_server(AppData *ad)
 static void _prepend_selected_as_primary(Eina_List **list, const char *selected)
 {
    if (!selected || !list) return;
-   Eina_List *l; const char *h; Eina_List *node = NULL;
-   EINA_LIST_FOREACH(*list, l, h)
+   Eina_List *l, *l_next;
+   const char *h;
+   EINA_LIST_FOREACH_SAFE(*list, l, l_next, h)
    {
       if ((h == selected) || (h && selected && strcmp(h, selected) == 0))
       {
-         node = l;
+         *list = eina_list_remove_list(*list, l);
+         *list = eina_list_prepend(*list, h);
          break;
       }
-   }
-   if (node)
-   {
-      const char *data = node->data;
-      *list = eina_list_remove_list(*list, node);
-      *list = eina_list_prepend(*list, data);
    }
 }
 
@@ -568,12 +554,14 @@ static void _retry_next_server_station(Ecore_Con_Url *old_url, Station_Download_
          xmlFreeParserCtxt(d_ctx->ctxt);
          d_ctx->ctxt = NULL;
       }
+      eina_list_free(d_ctx->servers);
       free(d_ctx);
    }
 }
 
 static void _populate_counter_request(Counter_Download_Context *c_ctx, AppData *ad, const char *uuid)
 {
+   fprintf(stderr, "LOG: _populate_counter_request: ad=%p, ad->api_servers=%p\n", ad, ad ? ad->api_servers : NULL);
    strncpy(c_ctx->stationuuid, uuid, sizeof(c_ctx->stationuuid) - 1);
    c_ctx->servers = eina_list_clone(ad->api_servers);
    _prepend_selected_as_primary(&c_ctx->servers, ad->api_selected);
@@ -609,6 +597,7 @@ static void _retry_next_server_counter(Ecore_Con_Url *old_url, Counter_Download_
    {
       printf("All servers exhausted for counter; giving up.\n");
       ecore_con_url_free(old_url);
+      eina_list_free(c_ctx->servers);
       free(c_ctx);
    }
 }

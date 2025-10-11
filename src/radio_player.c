@@ -15,6 +15,7 @@ radio_player_shutdown(void)
 void
 radio_player_play(AppData *ad, const char *url)
 {
+   fprintf(stderr, "LOG: radio_player_play: ad=%p, url=%s\n", ad, url);
    if (url && url[0])
      {
         emotion_object_file_set(ad->emotion, url);

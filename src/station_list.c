@@ -10,7 +10,9 @@ static void _favorite_remove_btn_clicked_cb(void *data, Evas_Object *obj, void *
 static void
 _station_click_counter_request(AppData *ad, Station *st)
 {
+   fprintf(stderr, "LOG: _station_click_counter_request: ad=%p, st=%p\n", ad, st);
    if (!st || !st->stationuuid) return;
+   fprintf(stderr, "LOG: _station_click_counter_request: stationuuid=%s\n", st->stationuuid);
    http_station_click_counter(ad, st->stationuuid);
 }
 
@@ -21,7 +23,11 @@ _list_item_selected_cb(void *data, Evas_Object *obj, void *event_info)
    Elm_Object_Item *it = event_info;
    Station *st = elm_object_item_data_get(it);
 
+   fprintf(stderr, "LOG: _list_item_selected_cb: ad=%p, it=%p, st=%p\n", ad, it, st);
+
    if (!st) return;
+
+   fprintf(stderr, "LOG: _list_item_selected_cb: station name='%s', url='%s'\n", st->name, st->url);
 
    _station_click_counter_request(ad, st);
    radio_player_play(ad, st->url);
@@ -65,8 +71,9 @@ station_list_populate(AppData *ad, Eina_List *stations, Eina_Bool new_search)
              elm_object_text_set(fav_btn, "Remove");
           }
 
-        Elm_Object_Item *li = elm_list_item_append(ad->list, st->name, icon, fav_btn, _list_item_selected_cb, ad);
+        Elm_Object_Item *li = elm_list_item_append(ad->list, st->name, icon, fav_btn, NULL, NULL);
         elm_object_item_data_set(li, st);
+        evas_object_smart_callback_add(ad->list, "selected", _list_item_selected_cb, ad);
 
         // Attach callback only when a button exists
         if (fav_btn)
