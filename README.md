@@ -2,8 +2,6 @@
 
 A simple internet radio player built with the Enlightenment Foundation Libraries (EFL).
 
-![Screenshot](screenshot.png)
-
 ## Features
 
 - Search for radio stations using the [radio-browser.info](http://radio-browser.info/) API
