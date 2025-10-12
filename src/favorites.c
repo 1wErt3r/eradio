@@ -13,6 +13,7 @@ typedef struct {
     char *uuid;
     char *url;
     char *name;
+    char *favicon;
 } FavEntry;
 
 static void _fav_entry_free(void *data)
@@ -23,6 +24,7 @@ static void _fav_entry_free(void *data)
     free(e->uuid);
     free(e->url);
     free(e->name);
+    free(e->favicon);
     free(e);
 }
 
@@ -73,7 +75,7 @@ favorites_init(AppData *ad)
 }
 
 static void
-_favorites_hash_add_entry(AppData *ad, const char *key, const char *uuid, const char *url, const char *name)
+_favorites_hash_add_entry(AppData *ad, const char *key, const char *uuid, const char *url, const char *name, const char *favicon)
 {
     if (!key || !key[0]) return;
     FavEntry *e = calloc(1, sizeof(FavEntry));
@@ -82,6 +84,7 @@ _favorites_hash_add_entry(AppData *ad, const char *key, const char *uuid, const 
     e->uuid = uuid ? strdup(uuid) : NULL;
     e->url = url ? strdup(url) : NULL;
     e->name = name ? strdup(name) : NULL;
+    e->favicon = favicon ? strdup(favicon) : NULL;
     eina_hash_add(ad->favorites, e->key, e);
 }
 
@@ -116,13 +119,15 @@ favorites_load(AppData *ad)
         xmlChar *uuid = xmlGetProp(cur, (xmlChar *)"uuid");
         xmlChar *url = xmlGetProp(cur, (xmlChar *)"url");
         xmlChar *name = xmlGetProp(cur, (xmlChar *)"name");
+        xmlChar *favicon = xmlGetProp(cur, (xmlChar *)"favicon");
         const char *key = NULL;
         if (uuid && uuid[0]) key = (const char *)uuid;
         else if (url && url[0]) key = (const char *)url;
-        _favorites_hash_add_entry(ad, key, (const char *)uuid, (const char *)url, (const char *)name);
+        _favorites_hash_add_entry(ad, key, (const char *)uuid, (const char *)url, (const char *)name, (const char *)favicon);
         if (uuid) xmlFree(uuid);
         if (url) xmlFree(url);
         if (name) xmlFree(name);
+        if (favicon) xmlFree(favicon);
     }
 
     xmlFreeDoc(doc);
@@ -157,6 +162,7 @@ static Eina_Bool _favorites_save_cb(const Eina_Hash *hash EINA_UNUSED, const voi
     if (e->uuid && e->uuid[0]) xmlNewProp(sn, (xmlChar *)"uuid", (xmlChar *)e->uuid);
     if (e->name && e->name[0]) xmlNewProp(sn, (xmlChar *)"name", (xmlChar *)e->name);
     if (e->url && e->url[0]) xmlNewProp(sn, (xmlChar *)"url", (xmlChar *)e->url);
+    if (e->favicon && e->favicon[0]) xmlNewProp(sn, (xmlChar *)"favicon", (xmlChar *)e->favicon);
     return EINA_TRUE;
 }
 
@@ -216,10 +222,14 @@ void favorites_set(AppData *ad, Station *st, Eina_Bool on)
                 free(existing->uuid);
                 existing->uuid = strdup(st->stationuuid);
             }
+            if (st->favicon) {
+                free(existing->favicon);
+                existing->favicon = strdup(st->favicon);
+            }
         }
         else
         {
-            _favorites_hash_add_entry(ad, key, st->stationuuid, st->url, st->name);
+            _favorites_hash_add_entry(ad, key, st->stationuuid, st->url, st->name, st->favicon);
         }
     }
     else
@@ -240,6 +250,7 @@ static Eina_Bool _favorites_rebuild_cb(const Eina_Hash *hash EINA_UNUSED, const 
     if (e->name) st->name = eina_stringshare_add(e->name);
     if (e->url) st->url = eina_stringshare_add(e->url);
     if (e->uuid) st->stationuuid = eina_stringshare_add(e->uuid);
+    if (e->favicon) st->favicon = eina_stringshare_add(e->favicon);
     st->favorite = EINA_TRUE;
     ad->favorites_stations = eina_list_append(ad->favorites_stations, st);
     return EINA_TRUE;

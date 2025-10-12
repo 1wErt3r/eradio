@@ -209,7 +209,8 @@ station_list_populate_favorites(AppData *ad)
         evas_object_propagate_events_set(fav_btn, EINA_FALSE);
         elm_object_text_set(fav_btn, "Remove");
 
-        Elm_Object_Item *li = elm_list_item_append(ad->list, st->name, icon,
+        evas_object_show(icon_box);
+        Elm_Object_Item *li = elm_list_item_append(ad->list, st->name, icon_box,
         fav_btn, NULL, NULL);
         elm_object_item_data_set(li, st);
 
