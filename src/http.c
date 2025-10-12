@@ -191,33 +191,52 @@ _handle_icon_complete(Ecore_Con_Event_Url_Complete *ev)
 {
     Icon_Download_Context *icon_ctx = ecore_con_url_data_get(ev->url_con);
 
-    if (icon_ctx && icon_ctx->image_data)
+    if (icon_ctx && icon_ctx->image_data && ev->status == 200)
     {
-        Elm_Object_Item *it = icon_ctx->list_item;
-        Station *st = elm_object_item_data_get(it);
-        Evas_Object *icon = elm_object_item_part_content_get(it, "start");
-        const char *ext = strrchr(ecore_con_url_url_get(ev->url_con), '.');
-        if (ext) ext++;
+        const Eina_List *headers;
+        const char *content_type = NULL;
+        void *header_data;
 
-        if (st && st->stationuuid)
+        headers = ecore_con_url_response_headers_get(ev->url_con);
+        EINA_LIST_FOREACH(headers, headers, header_data)
         {
-            char cache_dir[PATH_MAX];
-            const char *home = getenv("HOME");
-            snprintf(cache_dir, sizeof(cache_dir), "%s/.cache/eradio/favicons", home);
-            ecore_file_mkpath(cache_dir);
-
-            char cache_path[PATH_MAX];
-            snprintf(cache_path, sizeof(cache_path), "%s/%s", cache_dir, st->stationuuid);
-
-            FILE *f = fopen(cache_path, "wb");
-            if (f)
+            const char *header_line = header_data;
+            if (strncasecmp(header_line, "Content-Type:", 13) == 0)
             {
-                fwrite(eina_binbuf_string_get(icon_ctx->image_data), 1, eina_binbuf_length_get(icon_ctx->image_data), f);
-                fclose(f);
+                content_type = header_line + 13;
+                while (*content_type == ' ') content_type++;
+                break;
             }
         }
 
-        elm_image_memfile_set(icon, eina_binbuf_string_get(icon_ctx->image_data), eina_binbuf_length_get(icon_ctx->image_data), (char *)ext, NULL);
+        if (content_type && strncasecmp(content_type, "image/", 6) == 0)
+        {
+            Elm_Object_Item *it = icon_ctx->list_item;
+            Station *st = elm_object_item_data_get(it);
+            Evas_Object *icon = elm_object_item_part_content_get(it, "start");
+            const char *ext = strrchr(ecore_con_url_url_get(ev->url_con), '.');
+            if (ext) ext++;
+
+            if (st && st->stationuuid)
+            {
+                char cache_dir[PATH_MAX];
+                const char *home = getenv("HOME");
+                snprintf(cache_dir, sizeof(cache_dir), "%s/.cache/eradio/favicons", home);
+                ecore_file_mkpath(cache_dir);
+
+                char cache_path[PATH_MAX];
+                snprintf(cache_path, sizeof(cache_path), "%s/%s", cache_dir, st->stationuuid);
+
+                FILE *f = fopen(cache_path, "wb");
+                if (f)
+                {
+                    fwrite(eina_binbuf_string_get(icon_ctx->image_data), 1, eina_binbuf_length_get(icon_ctx->image_data), f);
+                    fclose(f);
+                }
+            }
+
+            elm_image_memfile_set(icon, eina_binbuf_string_get(icon_ctx->image_data), eina_binbuf_length_get(icon_ctx->image_data), (char *)ext, NULL);
+        }
     }
 
     if (icon_ctx)

@@ -60,7 +60,8 @@ station_list_populate(AppData *ad, Eina_Bool new_search)
         if (i >= 100) break;
 
         Evas_Object *icon = elm_icon_add(ad->win);
-        elm_icon_standard_set(icon, "radio");
+        elm_icon_standard_set(icon, "media-playback-start");
+	
         Evas_Object *fav_btn = NULL;
         if (ad->view_mode == VIEW_SEARCH)
           {
@@ -192,8 +193,17 @@ station_list_populate_favorites(AppData *ad)
 
     EINA_LIST_FOREACH(ad->favorites_stations, l, st)
     {
+      
+        Evas_Object *icon_box = elm_box_add(ad->win);
+        elm_box_horizontal_set(icon_box, EINA_TRUE);
+        evas_object_size_hint_min_set(icon_box, 64, 64);
+
         Evas_Object *icon = elm_icon_add(ad->win);
-        elm_icon_standard_set(icon, "radio");
+        evas_object_size_hint_min_set(icon, 64, 64);
+        elm_icon_standard_set(icon, "media-playback-start");
+        elm_box_pack_end(icon_box, icon);
+        evas_object_show(icon);
+
         Evas_Object *fav_btn = elm_button_add(ad->win);
         evas_object_size_hint_min_set(fav_btn, 60, 30);
         evas_object_propagate_events_set(fav_btn, EINA_FALSE);
@@ -212,6 +222,7 @@ station_list_populate_favorites(AppData *ad)
         ctx->li = li;
         evas_object_smart_callback_add(fav_btn, "clicked", _favorite_remove_btn_clicked_cb, ctx);
 
+        fprintf(stderr, "ICON: Station: %s, Favicon URL: %s\n", st->name, st->favicon);
         if (st->favicon && st->favicon[0] && st->stationuuid)
         {
             char cache_path[PATH_MAX];
@@ -220,12 +231,19 @@ station_list_populate_favorites(AppData *ad)
 
             if (ecore_file_exists(cache_path))
             {
+                fprintf(stderr, "ICON: Using cached icon for %s: %s\n", st->name, cache_path);
                 elm_image_file_set(icon, cache_path, NULL);
             }
             else
             {
+                fprintf(stderr, "ICON: Downloading icon for %s from %s\n", st->name, st->favicon);
+                elm_icon_standard_set(icon, "emblem-unreadable");
                 http_download_icon(ad, li, st->favicon);
             }
+        }
+        else
+        {
+            fprintf(stderr, "ICON: No favicon for %s\n", st->name);
         }
     }
     evas_object_smart_callback_add(ad->list, "selected", _list_item_selected_cb, ad);
