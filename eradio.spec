@@ -1,5 +1,5 @@
 Name:           eradio
-Version:        0.0.11
+Version:        0.0.12
 Release:        1%{?dist}
 Summary:        A simple EFL internet radio player
 License:        MIT
@@ -44,5 +44,7 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %doc README.md
 
 %changelog
+* Web Oct 15 2025 1wErt3r <root@politebot.com> - 0.0.12
+- Use genlist for search results, clear status when clicking stop
 * Sun Oct 12 2025 1wErt3r <root@politebot.com> - 0.0.8
 - Initial package release

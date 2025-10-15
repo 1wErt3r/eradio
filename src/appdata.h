@@ -34,7 +34,7 @@ typedef struct _AppData
    Evas_Object *separator;
    Evas_Object *statusbar;
    Evas_Object *search_btn;
-   Evas_Object *load_more_btn;
+
    Evas_Object *search_bar;
    Evas_Object *filters_toggle_btn;
    Evas_Object *filters_box;

@@ -8,6 +8,90 @@
 static void _favorite_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 static void _favorite_remove_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 
+static char *
+_gl_text_get(void *data, Evas_Object *obj, const char *part)
+{
+    Station *st = data;
+    return strdup(st->name);
+}
+
+static Evas_Object *
+_gl_content_get(void *data, Evas_Object *obj, const char *part)
+{
+    Station *st = data;
+    AppData *ad = evas_object_data_get(obj, "ad");
+    if (!strcmp(part, "elm.swallow.icon"))
+    {
+        Evas_Object *icon = elm_icon_add(obj);
+        elm_icon_standard_set(icon, "media-playback-start");
+        if (st->favicon && st->favicon[0] && st->stationuuid)
+        {
+            char cache_path[PATH_MAX];
+            const char *home = getenv("HOME");
+            snprintf(cache_path, sizeof(cache_path), "%s/.cache/eradio/favicons/%s", home, st->stationuuid);
+            if (ecore_file_exists(cache_path))
+            {
+                elm_image_file_set(icon, cache_path, NULL);
+            }
+            else
+            {
+                // We can't easily get the list item here to pass to http_download_icon,
+                // so we'll just show the default icon.
+                // A more advanced implementation might trigger the download differently.
+            }
+        }
+        return icon;
+    }
+    else if (!strcmp(part, "elm.swallow.end"))
+    {
+        if (ad->view_mode == VIEW_SEARCH)
+        {
+            Evas_Object *fav_btn = elm_button_add(obj);
+            evas_object_size_hint_min_set(fav_btn, 40, 40);
+            evas_object_propagate_events_set(fav_btn, EINA_FALSE);
+            if (st->favorite)
+                elm_object_text_set(fav_btn, "★");
+            else
+                elm_object_text_set(fav_btn, "☆");
+            evas_object_smart_callback_add(fav_btn, "clicked", _favorite_btn_clicked_cb, st);
+            evas_object_data_set(fav_btn, "ad", ad);
+            return fav_btn;
+        }
+        else if (ad->view_mode == VIEW_FAVORITES)
+        {
+            Evas_Object *fav_btn = elm_button_add(obj);
+            evas_object_size_hint_min_set(fav_btn, 60, 30);
+            evas_object_propagate_events_set(fav_btn, EINA_FALSE);
+            elm_object_text_set(fav_btn, "Remove");
+            evas_object_smart_callback_add(fav_btn, "clicked", _favorite_remove_btn_clicked_cb, st);
+            evas_object_data_set(fav_btn, "ad", ad);
+            return fav_btn;
+        }
+    }
+    return NULL;
+}
+
+static Eina_Bool
+_gl_state_get(void *data, Evas_Object *obj, const char *part)
+{
+    return EINA_FALSE;
+}
+
+static void
+_gl_del(void *data, Evas_Object *obj)
+{
+    // Station data is owned by the ad->stations list, so we don't free it here.
+}
+
+static Elm_Genlist_Item_Class *itc = NULL;
+
+static void _favorite_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
+static void _favorite_remove_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
+
+
+static void _favorite_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
+static void _favorite_remove_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
+
 static void
 _station_click_counter_request(AppData *ad, Station *st)
 {
@@ -15,6 +99,32 @@ _station_click_counter_request(AppData *ad, Station *st)
    if (!st || !st->stationuuid) return;
    fprintf(stderr, "LOG: _station_click_counter_request: stationuuid=%s\n", st->stationuuid);
    http_station_click_counter(ad, st->stationuuid);
+}
+
+static void
+_favorite_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info)
+{
+    Station *st = data;
+    AppData *ad = evas_object_data_get(obj, "ad");
+    st->favorite = !st->favorite;
+    favorites_set(ad, st, st->favorite);
+    favorites_save(ad);
+    // Find the genlist item and update it
+    Elm_Object_Item *it = elm_genlist_selected_item_get(ad->list);
+    if (it && elm_object_item_data_get(it) == st)
+        elm_genlist_item_update(it);
+}
+
+static void
+_favorite_remove_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info)
+{
+    Station *st = data;
+    AppData *ad = evas_object_data_get(obj, "ad");
+    st->favorite = EINA_FALSE;
+    favorites_set(ad, st, EINA_FALSE);
+    favorites_save(ad);
+    favorites_rebuild_station_list(ad);
+    station_list_populate_favorites(ad);
 }
 
 void
@@ -37,7 +147,7 @@ _list_item_selected_cb(void *data, Evas_Object *obj, void *event_info)
 void
 station_list_clear(AppData *ad)
 {
-    elm_list_clear(ad->list);
+    elm_genlist_clear(ad->list);
 }
 
 void
@@ -45,7 +155,16 @@ station_list_populate(AppData *ad, Eina_Bool new_search)
 {
     Eina_List *l;
     Station *st;
-    int i = 0;
+
+    if (!itc)
+    {
+        itc = elm_genlist_item_class_new();
+        itc->item_style = "default";
+        itc->func.text_get = _gl_text_get;
+        itc->func.content_get = _gl_content_get;
+        itc->func.state_get = _gl_state_get;
+        itc->func.del = _gl_del;
+    }
 
     if (new_search)
     {
@@ -53,135 +172,22 @@ station_list_populate(AppData *ad, Eina_Bool new_search)
       ad->displayed_stations_count = 0;
     }
 
-    Eina_List *stations_to_display = eina_list_nth_list(ad->stations, ad->displayed_stations_count);
+    evas_object_data_set(ad->list, "ad", ad);
+    Eina_List *stations_to_display = ad->stations;
 
     EINA_LIST_FOREACH(stations_to_display, l, st)
     {
-        if (i >= 100) break;
-
-        Evas_Object *icon = elm_icon_add(ad->win);
-        elm_icon_standard_set(icon, "media-playback-start");
-	
-        Evas_Object *fav_btn = NULL;
-        if (ad->view_mode == VIEW_SEARCH)
-          {
-             fav_btn = elm_button_add(ad->win);
-             evas_object_size_hint_min_set(fav_btn, 40, 40);
-             evas_object_propagate_events_set(fav_btn, EINA_FALSE);
-             if (st->favorite)
-               elm_object_text_set(fav_btn, "★");
-             else
-               elm_object_text_set(fav_btn, "☆");
-          }
-        else if (ad->view_mode == VIEW_FAVORITES)
-          {
-             fav_btn = elm_button_add(ad->win);
-             evas_object_size_hint_min_set(fav_btn, 60, 30);
-             evas_object_propagate_events_set(fav_btn, EINA_FALSE);
-             elm_object_text_set(fav_btn, "Remove");
-          }
-
-        Elm_Object_Item *li = elm_list_item_append(ad->list, st->name, icon, fav_btn, NULL, NULL);
-        elm_object_item_data_set(li, st);
-
-        // Attach callback only when a button exists
-        if (fav_btn)
-          {
-             typedef struct {
-                 AppData *ad;
-                 Elm_Object_Item *li;
-             } FavCtx;
-             FavCtx *ctx = calloc(1, sizeof(FavCtx));
-             ctx->ad = ad;
-             ctx->li = li;
-             if (ad->view_mode == VIEW_SEARCH)
-               evas_object_smart_callback_add(fav_btn, "clicked", _favorite_btn_clicked_cb, ctx);
-             else
-               evas_object_smart_callback_add(fav_btn, "clicked", _favorite_remove_btn_clicked_cb, ctx);
-          }
-
-        if (st->favicon && st->favicon[0] && st->stationuuid)
-          {
-             char cache_path[PATH_MAX];
-             const char *home = getenv("HOME");
-             snprintf(cache_path, sizeof(cache_path), "%s/.cache/eradio/favicons/%s", home, st->stationuuid);
-
-             if (ecore_file_exists(cache_path))
-               {
-                  elm_image_file_set(icon, cache_path, NULL);
-               }
-             else
-               {
-                  http_download_icon(ad, li, st->favicon);
-               }
-          }
-        i++;
+        elm_genlist_item_append(ad->list,
+                                itc,
+                                st,
+                                NULL,
+                                ELM_GENLIST_ITEM_NONE,
+                                _list_item_selected_cb,
+                                ad);
     }
-    ad->displayed_stations_count += i;
-
-    if (ad->displayed_stations_count < eina_list_count(ad->stations))
-        ui_set_load_more_button_visibility(ad, EINA_TRUE);
-    else
-        ui_set_load_more_button_visibility(ad, EINA_FALSE);
-
-
-    evas_object_smart_callback_add(ad->list, "selected", _list_item_selected_cb, ad);
-    elm_list_go(ad->list);
 }
 
-static void
-_favorite_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info)
-{
-    typedef struct {
-        AppData *ad;
-        Elm_Object_Item *li;
-    } FavCtx;
 
-    FavCtx *ctx = data;
-    if (!ctx) return;
-    Station *st = elm_object_item_data_get(ctx->li);
-    if (!st) { free(ctx); return; }
-
-    st->favorite = !st->favorite;
-
-    // Update button text to reflect state; use star characters for a clear fallback
-    if (st->favorite)
-      elm_object_text_set(obj, "★");
-    else
-      elm_object_text_set(obj, "☆");
-
-    favorites_set(ctx->ad, st, st->favorite);
-    favorites_save(ctx->ad);
-
-    // Ensure the list item doesn't get selected when clicking the favorite button
-    evas_object_propagate_events_set(obj, EINA_FALSE);
-
-    free(ctx);
-}
-
-static void
-_favorite_remove_btn_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
-{
-    typedef struct {
-        AppData *ad;
-        Elm_Object_Item *li;
-    } FavCtx;
-
-    FavCtx *ctx = data;
-    if (!ctx) return;
-    Station *st = elm_object_item_data_get(ctx->li);
-    if (!st) { free(ctx); return; }
-
-    st->favorite = EINA_FALSE;
-    favorites_set(ctx->ad, st, EINA_FALSE);
-    favorites_save(ctx->ad);
-
-    // Rebuild favorites list to reflect removal
-    favorites_rebuild_station_list(ctx->ad);
-    station_list_populate_favorites(ctx->ad);
-
-    free(ctx);
-}
 
 void
 station_list_populate_favorites(AppData *ad)
@@ -189,64 +195,27 @@ station_list_populate_favorites(AppData *ad)
     Eina_List *l;
     Station *st;
 
+    if (!itc)
+    {
+        itc = elm_genlist_item_class_new();
+        itc->item_style = "default";
+        itc->func.text_get = _gl_text_get;
+        itc->func.content_get = _gl_content_get;
+        itc->func.state_get = _gl_state_get;
+        itc->func.del = _gl_del;
+    }
+
     station_list_clear(ad);
+    evas_object_data_set(ad->list, "ad", ad);
 
     EINA_LIST_FOREACH(ad->favorites_stations, l, st)
     {
-      
-        Evas_Object *icon_box = elm_box_add(ad->win);
-        elm_box_horizontal_set(icon_box, EINA_TRUE);
-        evas_object_size_hint_min_set(icon_box, 64, 64);
-
-        Evas_Object *icon = elm_icon_add(ad->win);
-        evas_object_size_hint_min_set(icon, 64, 64);
-        elm_icon_standard_set(icon, "media-playback-start");
-        elm_box_pack_end(icon_box, icon);
-        evas_object_show(icon);
-
-        Evas_Object *fav_btn = elm_button_add(ad->win);
-        evas_object_size_hint_min_set(fav_btn, 60, 30);
-        evas_object_propagate_events_set(fav_btn, EINA_FALSE);
-        elm_object_text_set(fav_btn, "Remove");
-
-        evas_object_show(icon_box);
-        Elm_Object_Item *li = elm_list_item_append(ad->list, st->name, icon_box,
-        fav_btn, NULL, NULL);
-        elm_object_item_data_set(li, st);
-
-        typedef struct {
-            AppData *ad;
-            Elm_Object_Item *li;
-        } FavCtx;
-        FavCtx *ctx = calloc(1, sizeof(FavCtx));
-        ctx->ad = ad;
-        ctx->li = li;
-        evas_object_smart_callback_add(fav_btn, "clicked", _favorite_remove_btn_clicked_cb, ctx);
-
-        fprintf(stderr, "ICON: Station: %s, Favicon URL: %s\n", st->name, st->favicon);
-        if (st->favicon && st->favicon[0] && st->stationuuid)
-        {
-            char cache_path[PATH_MAX];
-            const char *home = getenv("HOME");
-            snprintf(cache_path, sizeof(cache_path), "%s/.cache/eradio/favicons/%s", home, st->stationuuid);
-
-            if (ecore_file_exists(cache_path))
-            {
-                fprintf(stderr, "ICON: Using cached icon for %s: %s\n", st->name, cache_path);
-                elm_image_file_set(icon, cache_path, NULL);
-            }
-            else
-            {
-                fprintf(stderr, "ICON: Downloading icon for %s from %s\n", st->name, st->favicon);
-                elm_icon_standard_set(icon, "emblem-unreadable");
-                http_download_icon(ad, li, st->favicon);
-            }
-        }
-        else
-        {
-            fprintf(stderr, "ICON: No favicon for %s\n", st->name);
-        }
+        elm_genlist_item_append(ad->list,
+                                itc,
+                                st,
+                                NULL,
+                                ELM_GENLIST_ITEM_NONE,
+                                _list_item_selected_cb,
+                                ad);
     }
-    evas_object_smart_callback_add(ad->list, "selected", _list_item_selected_cb, ad);
-    elm_list_go(ad->list);
 }
