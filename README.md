@@ -23,15 +23,6 @@ A simple internet radio player built with the Enlightenment Foundation Libraries
 - `pkg-config`
 - `libxml2`
 
-## Project Structure
-
-- `configure.ac` — Autoconf script for project configuration and dependency checks.
-- `Makefile.am` — Top-level Automake file.
-- `src/main.c` — Entry point and all application logic.
-- `src/Makefile.am` — Automake file for the source directory.
-- `data/` — Contains data files, such as the `.desktop` file and icon.
-- `README.md` — This guide.
-
 ## Build & Run
 
 First, generate the build system:
