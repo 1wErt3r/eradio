@@ -47,6 +47,8 @@ radio_player_stop(AppData *ad)
    ad->playing = EINA_FALSE;
    if (ad->play_pause_item)
      elm_toolbar_item_icon_set(ad->play_pause_item, "media-playback-start");
+   if (ad->statusbar)
+     elm_object_text_set(ad->statusbar, " ");
 }
 
 void
