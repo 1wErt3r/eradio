@@ -11,6 +11,7 @@ static void _tb_favorites_clicked_cb(void *data, Evas_Object *obj, void *event_i
 static void _tb_search_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 static void _server_item_selected_cb(void *data, Evas_Object *obj, void *event_info);
 static void _filters_toggle_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
+static void _tb_url_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 
 // Forward declarations for callbacks
 void _play_pause_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
@@ -83,6 +84,7 @@ ui_create(AppData *ad)
    /* Toolbar items */
    elm_toolbar_item_append(toolbar, "system-search", "Search", _tb_search_clicked_cb, ad);
    elm_toolbar_item_append(toolbar, "emblem-favorite", "Favorites", _tb_favorites_clicked_cb, ad);
+   elm_toolbar_item_append(toolbar, "folder-remote", "Add URL", _tb_url_clicked_cb, ad);
 
    ad->search_bar = elm_box_add(ad->win);
    elm_box_padding_set(ad->search_bar, 10, 10);
@@ -383,6 +385,188 @@ ui_show_error_dialog(AppData *ad, const char *message)
    elm_box_pack_end(box, btn);
    evas_object_smart_callback_add(btn, "clicked", _error_dialog_ok_clicked_cb, inwin);
    evas_object_show(btn);
+
+   evas_object_show(box);
+   evas_object_show(inwin);
+}
+
+static Eina_Bool
+_is_valid_url(const char *url)
+{
+   if (!url || !url[0]) return EINA_FALSE;
+
+   // Basic URL validation - check for protocol
+   if (strncmp(url, "http://", 7) != 0 && strncmp(url, "https://", 8) != 0) {
+      return EINA_FALSE;
+   }
+
+   // Check if there's at least a domain name after protocol
+   const char *domain_start = strchr(url, ':');
+   if (!domain_start) return EINA_FALSE;
+   domain_start += 3; // Skip "://"
+   if (!domain_start || !domain_start[0]) return EINA_FALSE;
+
+   return EINA_TRUE;
+}
+
+static void
+_url_dialog_ok_clicked_cb(void *data, Evas_Object *obj, void *event_info)
+{
+   AppData *ad = data;
+   if (!ad) return;
+
+   Evas_Object *inwin = evas_object_data_get(obj, "inwin");
+   Evas_Object *url_entry = evas_object_data_get(obj, "url_entry");
+   Evas_Object *name_entry = evas_object_data_get(obj, "name_entry");
+
+   if (!url_entry || !name_entry) return;
+
+   const char *url = elm_entry_entry_get(url_entry);
+   const char *name = elm_entry_entry_get(name_entry);
+
+   if (!url || !url[0]) {
+      ui_show_error_dialog(ad, "Please enter a URL");
+      return;
+   }
+
+   // Trim whitespace from URL
+   while (url && *url == ' ') url++;
+
+   if (!_is_valid_url(url)) {
+      ui_show_error_dialog(ad, "Please enter a valid URL starting with http:// or https://");
+      return;
+   }
+
+   // Create a new station
+   Station *station = calloc(1, sizeof(Station));
+   if (!station) {
+      ui_show_error_dialog(ad, "Failed to create station");
+      return;
+   }
+
+   station->url = eina_stringshare_add(url);
+   station->name = name && name[0] ? eina_stringshare_add(name) : eina_stringshare_add("Custom Station");
+   station->favicon = NULL;
+   station->stationuuid = NULL;
+   station->favorite = EINA_TRUE; // Mark as favorite since it's being added to favorites
+
+   // Add to favorites
+   favorites_set(ad, station, EINA_TRUE);
+
+   // Rebuild the favorites station list to include the new station
+   favorites_rebuild_station_list(ad);
+
+   // Close the dialog
+   evas_object_del(inwin);
+
+   // Switch to favorites view to show the added station
+   _tb_favorites_clicked_cb(ad, NULL, NULL);
+
+   // Clean up the temporary station structure
+   eina_stringshare_del(station->url);
+   eina_stringshare_del(station->name);
+   free(station);
+}
+
+static void
+_url_dialog_cancel_clicked_cb(void *data, Evas_Object *obj, void *event_info)
+{
+   Evas_Object *inwin = evas_object_data_get(obj, "inwin");
+   evas_object_del(inwin);
+}
+
+static void
+_tb_url_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_info EINA_UNUSED)
+{
+   AppData *ad = data;
+   if (!ad || !ad->win) return;
+
+   Evas_Object *inwin = elm_win_inwin_add(ad->win);
+
+   Evas_Object *box = elm_box_add(ad->win);
+   elm_box_padding_set(box, 10, 10);
+   elm_box_horizontal_set(box, EINA_FALSE);
+   evas_object_size_hint_weight_set(box, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
+   evas_object_size_hint_align_set(box, EVAS_HINT_FILL, EVAS_HINT_FILL);
+   elm_win_inwin_content_set(inwin, box);
+
+   // Title
+   Evas_Object *label = elm_label_add(ad->win);
+   elm_object_text_set(label, "Add Custom Radio Station");
+   evas_object_size_hint_weight_set(label, EVAS_HINT_EXPAND, 0);
+   evas_object_size_hint_align_set(label, EVAS_HINT_FILL, 0.5);
+   elm_box_pack_end(box, label);
+   evas_object_show(label);
+
+   // Name entry
+   label = elm_label_add(ad->win);
+   elm_object_text_set(label, "Station Name (optional):");
+   evas_object_size_hint_weight_set(label, EVAS_HINT_EXPAND, 0);
+   evas_object_size_hint_align_set(label, EVAS_HINT_FILL, 0.5);
+   elm_box_pack_end(box, label);
+   evas_object_show(label);
+
+   Evas_Object *name_entry = elm_entry_add(ad->win);
+   elm_entry_single_line_set(name_entry, EINA_TRUE);
+   elm_entry_scrollable_set(name_entry, EINA_TRUE);
+   evas_object_size_hint_weight_set(name_entry, EVAS_HINT_EXPAND, 0);
+   evas_object_size_hint_align_set(name_entry, EVAS_HINT_FILL, 0.5);
+   elm_object_part_text_set(name_entry, "guide", "Enter station name...");
+   elm_box_pack_end(box, name_entry);
+   evas_object_show(name_entry);
+
+   // URL entry
+   label = elm_label_add(ad->win);
+   elm_object_text_set(label, "Stream URL:");
+   evas_object_size_hint_weight_set(label, EVAS_HINT_EXPAND, 0);
+   evas_object_size_hint_align_set(label, EVAS_HINT_FILL, 0.5);
+   elm_box_pack_end(box, label);
+   evas_object_show(label);
+
+   Evas_Object *url_entry = elm_entry_add(ad->win);
+   elm_entry_single_line_set(url_entry, EINA_TRUE);
+   elm_entry_scrollable_set(url_entry, EINA_TRUE);
+   evas_object_size_hint_weight_set(url_entry, EVAS_HINT_EXPAND, 0);
+   evas_object_size_hint_align_set(url_entry, EVAS_HINT_FILL, 0.5);
+   elm_object_part_text_set(url_entry, "guide", "http://example.com/stream.mp3");
+   elm_box_pack_end(box, url_entry);
+   evas_object_show(url_entry);
+   elm_object_focus_set(url_entry, EINA_TRUE);
+
+   // Button box
+   Evas_Object *btn_box = elm_box_add(ad->win);
+   elm_box_horizontal_set(btn_box, EINA_TRUE);
+   elm_box_padding_set(btn_box, 10, 0);
+   evas_object_size_hint_weight_set(btn_box, EVAS_HINT_EXPAND, 0);
+   evas_object_size_hint_align_set(btn_box, EVAS_HINT_FILL, 0.5);
+   elm_box_pack_end(box, btn_box);
+   evas_object_show(btn_box);
+
+   // Cancel button
+   Evas_Object *cancel_btn = elm_button_add(ad->win);
+   elm_object_text_set(cancel_btn, "Cancel");
+   evas_object_size_hint_align_set(cancel_btn, 0.5, 0.5);
+   evas_object_size_hint_weight_set(cancel_btn, EVAS_HINT_EXPAND, 0);
+   elm_box_pack_end(btn_box, cancel_btn);
+   evas_object_smart_callback_add(cancel_btn, "clicked", _url_dialog_cancel_clicked_cb, NULL);
+   evas_object_show(cancel_btn);
+
+   // OK button
+   Evas_Object *ok_btn = elm_button_add(ad->win);
+   elm_object_text_set(ok_btn, "Add Station");
+   evas_object_size_hint_align_set(ok_btn, 0.5, 0.5);
+   evas_object_size_hint_weight_set(ok_btn, EVAS_HINT_EXPAND, 0);
+   elm_box_pack_end(btn_box, ok_btn);
+   evas_object_show(ok_btn);
+
+   // Store references for the callback
+   evas_object_data_set(ok_btn, "inwin", inwin);
+   evas_object_data_set(ok_btn, "url_entry", url_entry);
+   evas_object_data_set(ok_btn, "name_entry", name_entry);
+   evas_object_data_set(cancel_btn, "inwin", inwin);
+
+   evas_object_smart_callback_add(ok_btn, "clicked", _url_dialog_ok_clicked_cb, ad);
+   evas_object_smart_callback_add(url_entry, "activated", _url_dialog_ok_clicked_cb, ad);
 
    evas_object_show(box);
    evas_object_show(inwin);
