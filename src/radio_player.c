@@ -112,6 +112,9 @@ radio_player_init(AppData *ad)
    evas_object_smart_callback_add(ad->emotion, "title_change", _title_changed_cb, ad);
    evas_object_smart_callback_add(ad->emotion, "playback_error", _playback_error_cb, ad);
    evas_object_smart_callback_add(ad->emotion, "decode_error", _decode_error_cb, ad);
+
+   // Set initial volume
+   emotion_object_audio_volume_set(ad->emotion, 0.7);
 }
 
 void

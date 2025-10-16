@@ -22,6 +22,7 @@ void _list_item_selected_cb(void *data, Evas_Object *obj, void *event_info);
 static void _favorites_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 static void _load_more_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 static void _error_dialog_ok_clicked_cb(void *data, Evas_Object *obj, void *event_info);
+static void _volume_slider_changed_cb(void *data, Evas_Object *obj, void *event_info);
 
 
 static void
@@ -222,6 +223,31 @@ ui_create(AppData *ad)
    elm_box_pack_end(box, ad->statusbar);
    evas_object_show(ad->statusbar);
 
+   // Volume slider below status bar
+   Evas_Object *volume_box = elm_box_add(ad->win);
+   elm_box_horizontal_set(volume_box, EINA_TRUE);
+   elm_box_padding_set(volume_box, 10, 0);
+   evas_object_size_hint_weight_set(volume_box, EVAS_HINT_EXPAND, 0);
+   evas_object_size_hint_align_set(volume_box, EVAS_HINT_FILL, 0.5);
+   elm_box_pack_end(box, volume_box);
+   evas_object_show(volume_box);
+
+   Evas_Object *volume_label = elm_label_add(ad->win);
+   elm_object_text_set(volume_label, "Volume:");
+   evas_object_size_hint_align_set(volume_label, 0, 0.5);
+   elm_box_pack_end(volume_box, volume_label);
+   evas_object_show(volume_label);
+
+   ad->volume_slider = elm_slider_add(ad->win);
+   elm_slider_horizontal_set(ad->volume_slider, EINA_TRUE);
+   elm_slider_min_max_set(ad->volume_slider, 0.0, 1.0);
+   elm_slider_value_set(ad->volume_slider, 0.7); // Default volume
+   evas_object_size_hint_weight_set(ad->volume_slider, EVAS_HINT_EXPAND, 0);
+   evas_object_size_hint_align_set(ad->volume_slider, EVAS_HINT_FILL, 0.5);
+   evas_object_smart_callback_add(ad->volume_slider, "changed", _volume_slider_changed_cb, ad);
+   elm_box_pack_end(volume_box, ad->volume_slider);
+   evas_object_show(ad->volume_slider);
+
    ad->play_pause_item = elm_toolbar_item_append(ad->controls_toolbar, "media-playback-start", "Play/Pause", _play_pause_btn_clicked_cb, ad);
    ad->stop_item = elm_toolbar_item_append(ad->controls_toolbar, "media-playback-stop", "Stop", _stop_btn_clicked_cb, ad);
 
@@ -356,6 +382,16 @@ _error_dialog_ok_clicked_cb(void *data, Evas_Object *obj, void *event_info)
 {
    Evas_Object *inwin = data;
    evas_object_del(inwin);
+}
+
+static void
+_volume_slider_changed_cb(void *data, Evas_Object *obj, void *event_info)
+{
+   AppData *ad = data;
+   if (!ad || !ad->emotion) return;
+
+   double volume = elm_slider_value_get(obj);
+   emotion_object_audio_volume_set(ad->emotion, volume);
 }
 
 void

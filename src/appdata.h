@@ -33,6 +33,7 @@ typedef struct _AppData
    Elm_Object_Item *stop_item;
    Evas_Object *separator;
    Evas_Object *statusbar;
+   Evas_Object *volume_slider;
    Evas_Object *search_btn;
 
    Evas_Object *search_bar;
