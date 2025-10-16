@@ -20,6 +20,7 @@ void _search_entry_activated_cb(void *data, Evas_Object *obj, void *event_info);
 void _list_item_selected_cb(void *data, Evas_Object *obj, void *event_info);
 static void _favorites_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 static void _load_more_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
+static void _error_dialog_ok_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 
 
 static void
@@ -346,6 +347,45 @@ _tb_search_clicked_cb(void *data, Evas_Object *obj EINA_UNUSED, void *event_info
      station_list_populate(ad, EINA_TRUE);
    else
      station_list_clear(ad);
+}
+
+static void
+_error_dialog_ok_clicked_cb(void *data, Evas_Object *obj, void *event_info)
+{
+   Evas_Object *inwin = data;
+   evas_object_del(inwin);
+}
+
+void
+ui_show_error_dialog(AppData *ad, const char *message)
+{
+   if (!ad || !ad->win || !message) return;
+
+   Evas_Object *inwin = elm_win_inwin_add(ad->win);
+
+   Evas_Object *box = elm_box_add(ad->win);
+   elm_box_padding_set(box, 10, 10);
+   elm_box_horizontal_set(box, EINA_FALSE);
+   evas_object_size_hint_weight_set(box, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
+   evas_object_size_hint_align_set(box, EVAS_HINT_FILL, EVAS_HINT_FILL);
+   elm_win_inwin_content_set(inwin, box);
+
+   Evas_Object *label = elm_label_add(ad->win);
+   elm_object_text_set(label, message);
+   evas_object_size_hint_weight_set(label, EVAS_HINT_EXPAND, EVAS_HINT_EXPAND);
+   evas_object_size_hint_align_set(label, EVAS_HINT_FILL, 0.5);
+   elm_box_pack_end(box, label);
+   evas_object_show(label);
+
+   Evas_Object *btn = elm_button_add(ad->win);
+   elm_object_text_set(btn, "OK");
+   evas_object_size_hint_align_set(btn, 0.5, 0.5);
+   elm_box_pack_end(box, btn);
+   evas_object_smart_callback_add(btn, "clicked", _error_dialog_ok_clicked_cb, inwin);
+   evas_object_show(btn);
+
+   evas_object_show(box);
+   evas_object_show(inwin);
 }
 
 

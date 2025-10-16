@@ -141,7 +141,7 @@ _list_item_selected_cb(void *data, Evas_Object *obj, void *event_info)
    fprintf(stderr, "LOG: _list_item_selected_cb: station name='%s', url='%s'\n", st->name, st->url);
 
    _station_click_counter_request(ad, st);
-   radio_player_play(ad, st->url);
+   radio_player_play(ad, st->url, st->name);
 }
 
 void
