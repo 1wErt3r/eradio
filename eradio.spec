@@ -44,7 +44,7 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %doc README.md
 
 %changelog
-* Thu Oct 16 1wErt3r <root@politebot.com> - 0.0.13
+* Fri Oct 17 2025 1wErt3r <root@politebot.com> - 0.0.13
 - Add manual URL entry, add volume slider 
 * Wed Oct 15 2025 1wErt3r <root@politebot.com> - 0.0.12
 - Use genlist for search results, clear status when clicking stop
