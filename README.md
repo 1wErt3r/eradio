@@ -15,6 +15,47 @@ A simple internet radio player built with the Enlightenment Foundation Libraries
 - List stations with their favicons
 - Play, pause, and stop radio streams
 - Search by station name, country, language, or tag
+- Save favorite radio stations locally
+- Add custom radio station URLs manually
+
+## Favorites Storage
+
+Favorite radio stations are saved locally in XML format at:
+```
+~/.config/eradio/favorites.xml
+```
+
+### XML Format
+
+The favorites file uses a simple XML structure to store station metadata:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<favorites version="1">
+  <station uuid="station-uuid-here" name="Station Name"
+           url="http://example.com/stream.mp3"
+           favicon="http://example.com/icon.png"/>
+  <station uuid="another-uuid" name="Another Station"
+           url="http://example.org/stream"/>
+</favorites>
+```
+
+### Element Attributes
+
+Each `<station>` element can contain the following attributes:
+
+- **`uuid`** (optional): Unique identifier from the radio-browser.info API
+- **`name`** (optional): Human-readable station name
+- **`url`** (optional): Stream URL for the radio station
+- **`favicon`** (optional): URL to the station's favicon image
+
+**Note:** Either `uuid` or `url` must be present for a station entry to be valid. The `uuid` is used as the primary key when available, with `url` as fallback.
+
+### File Operations
+
+- The file is automatically created when you add your first favorite station
+- Favorites are saved atomically using a temporary file and rename operation
+- The file can be manually edited - changes will be loaded when the application starts
 
 ## Prerequisites
 

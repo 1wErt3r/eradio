@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "favorites.h"
 
@@ -188,11 +189,35 @@ void favorites_save(AppData *ad)
 
     eina_hash_foreach(ad->favorites, _favorites_save_cb, root);
 
-    xmlSaveFormatFileEnc(tmp, doc, "UTF-8", 1);
+    int xml_save_result = xmlSaveFormatFileEnc(tmp, doc, "UTF-8", 1);
     xmlFreeDoc(doc);
 
-    rename(tmp, path);
+    if (xml_save_result == -1) {
+        // XML save failed - could be disk space, permissions, etc.
+        if (ad->statusbar) {
+            elm_object_text_set(ad->statusbar, "Error: Could not save favorites (disk full?)");
+        }
+        unlink(tmp); // Clean up the temp file
+        free(tmp);
+        goto end;
+    }
+
+    if (rename(tmp, path) == -1) {
+        // Rename failed - could be filesystem issues
+        if (ad->statusbar) {
+            elm_object_text_set(ad->statusbar, "Error: Could not save favorites (filesystem error)");
+        }
+        unlink(tmp); // Clean up the temp file
+        free(tmp);
+        goto end;
+    }
+
     free(tmp);
+
+    // Success - provide feedback to user
+    if (ad->statusbar) {
+        elm_object_text_set(ad->statusbar, "Favorites saved successfully");
+    }
 
 end:
     if (dir) free(dir);
