@@ -10,6 +10,11 @@ typedef struct _Station
    const char *url;
    const char *favicon;
    const char *stationuuid;
+   const char *country;
+   const char *language;
+   const char *codec;
+   const char *tags;
+   int bitrate;
    Eina_Bool favorite;
 } Station;
 

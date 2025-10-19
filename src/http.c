@@ -312,6 +312,10 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
             eina_stringshare_del(st->url);
             eina_stringshare_del(st->favicon);
             eina_stringshare_del(st->stationuuid);
+            eina_stringshare_del(st->country);
+            eina_stringshare_del(st->language);
+            eina_stringshare_del(st->codec);
+            eina_stringshare_del(st->tags);
             free(st);
         }
         ad->stations = NULL;
@@ -350,6 +354,42 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
              st->stationuuid = eina_stringshare_add((const char *)prop);
              xmlFree(prop);
           }
+
+        prop = xmlGetProp(cur, (xmlChar *)"country");
+        if (prop)
+          {
+             st->country = eina_stringshare_add((const char *)prop);
+             xmlFree(prop);
+          }
+
+        prop = xmlGetProp(cur, (xmlChar *)"language");
+        if (prop)
+          {
+             st->language = eina_stringshare_add((const char *)prop);
+             xmlFree(prop);
+          }
+
+        prop = xmlGetProp(cur, (xmlChar *)"codec");
+        if (prop)
+          {
+             st->codec = eina_stringshare_add((const char *)prop);
+             xmlFree(prop);
+          }
+
+        prop = xmlGetProp(cur, (xmlChar *)"tags");
+        if (prop)
+          {
+             st->tags = eina_stringshare_add((const char *)prop);
+             xmlFree(prop);
+          }
+
+        prop = xmlGetProp(cur, (xmlChar *)"bitrate");
+        if (prop)
+          {
+             st->bitrate = atoi((const char *)prop);
+             xmlFree(prop);
+          }
+
         ad->stations = eina_list_append(ad->stations, st);
     }
 

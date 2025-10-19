@@ -12,7 +12,63 @@ static char *
 _gl_text_get(void *data, Evas_Object *obj, const char *part)
 {
     Station *st = data;
-    return strdup(st->name);
+
+    if (!strcmp(part, "elm.text"))
+    {
+        // Create a detailed text showing station name and metadata
+        char detailed_text[512] = {0};
+        snprintf(detailed_text, sizeof(detailed_text), "%s", st->name ? st->name : "");
+
+        // Add bitrate, codec, country as additional info
+        char info[256] = "";
+        Eina_Bool first_item = EINA_TRUE;
+
+        if (st->bitrate > 0)
+        {
+            char bitrate_str[32];
+            snprintf(bitrate_str, sizeof(bitrate_str), "%d kbps", st->bitrate);
+            strcat(info, bitrate_str);
+            first_item = EINA_FALSE;
+        }
+
+        if (st->codec && st->codec[0])
+        {
+            if (!first_item) strcat(info, " | ");
+            strcat(info, st->codec);
+            first_item = EINA_FALSE;
+        }
+
+        if (st->country && st->country[0])
+        {
+            if (!first_item) strcat(info, " | ");
+            strcat(info, st->country);
+            first_item = EINA_FALSE;
+        }
+
+        if (st->language && st->language[0])
+        {
+            if (!first_item) strcat(info, " | ");
+            strcat(info, st->language);
+            first_item = EINA_FALSE;
+        }
+
+        if (info[0])
+        {
+            strncat(detailed_text, " • ", sizeof(detailed_text) - strlen(detailed_text) - 1);
+            strncat(detailed_text, info, sizeof(detailed_text) - strlen(detailed_text) - 1);
+        }
+
+        // Add tags on another line if available
+        if (st->tags && st->tags[0])
+        {
+            strncat(detailed_text, " • ", sizeof(detailed_text) - strlen(detailed_text) - 1);
+            strncat(detailed_text, st->tags, sizeof(detailed_text) - strlen(detailed_text) - 1);
+        }
+
+        return strdup(detailed_text);
+    }
+
+    return NULL;
 }
 
 static Evas_Object *
