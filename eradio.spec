@@ -1,5 +1,5 @@
 Name:           eradio
-Version:        0.0.13
+Version:        0.0.14
 Release:        1%{?dist}
 Summary:        A simple EFL internet radio player
 License:        MIT
@@ -44,6 +44,8 @@ desktop-file-validate %{buildroot}%{_datadir}/applications/%{name}.desktop
 %doc README.md
 
 %changelog
+* Mon Oct 20 2025 1wErt3r <root@politebot.com> - 0.0.14
+- Show bitrate and other station metadata in search results 
 * Fri Oct 17 2025 1wErt3r <root@politebot.com> - 0.0.13
 - Add manual URL entry, add volume slider 
 * Wed Oct 15 2025 1wErt3r <root@politebot.com> - 0.0.12
