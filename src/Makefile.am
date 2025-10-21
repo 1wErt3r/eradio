@@ -6,9 +6,13 @@ eradio_SOURCES = main.c ui.c radio_player.c station_list.c http.c favorites.c \
 eradio_CFLAGS = $(EFL_CFLAGS) $(LIBXML_CFLAGS)
 eradio_LDADD = $(EFL_LIBS) $(LIBXML_LIBS)
 
-# Test program
+# Test program with Unity framework
 noinst_PROGRAMS = test_basic
 
-test_basic_SOURCES = tests/test_basic.c appdata.h
-test_basic_CFLAGS = $(EFL_CFLAGS)
+# Unity framework sources
+UNITY_SRC = $(top_srcdir)/vendor/unity/src/unity.c
+UNITY_HDR = $(top_srcdir)/vendor/unity/src/unity.h
+
+test_basic_SOURCES = tests/test_basic.c appdata.h $(UNITY_SRC)
+test_basic_CFLAGS = $(EFL_CFLAGS) -I$(top_srcdir)/vendor/unity/src
 test_basic_LDADD = $(EFL_LIBS_NO_CON)
