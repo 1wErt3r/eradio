@@ -2,22 +2,23 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Include Unity testing framework
+#include "unity.h"
+
 // Include the core data structures we want to test
 #include "../appdata.h"
 
-// Simple test framework macros
-#define TEST_ASSERT(condition, message) \
-    do { \
-        if (!(condition)) { \
-            printf("FAIL: %s\n", message); \
-            return 0; \
-        } else { \
-            printf("PASS: %s\n", message); \
-        } \
-    } while(0)
+// setUp and tearDown functions (optional)
+void setUp(void) {
+    // This runs before each test
+}
+
+void tearDown(void) {
+    // This runs after each test
+}
 
 // Test functions
-int test_station_creation() {
+void test_station_creation(void) {
     Station station = {0};
 
     station.name = "Test Radio Station";
@@ -25,26 +26,22 @@ int test_station_creation() {
     station.bitrate = 128;
     station.favorite = EINA_TRUE;
 
-    TEST_ASSERT(station.name != NULL, "Station name should be set");
-    TEST_ASSERT(strcmp(station.name, "Test Radio Station") == 0, "Station name should match");
-    TEST_ASSERT(station.bitrate == 128, "Station bitrate should be 128");
-    TEST_ASSERT(station.favorite == EINA_TRUE, "Station favorite should be true");
-
-    return 1;
+    TEST_ASSERT_NOT_NULL(station.name);
+    TEST_ASSERT_EQUAL_STRING("Test Radio Station", station.name);
+    TEST_ASSERT_EQUAL(128, station.bitrate);
+    TEST_ASSERT_EQUAL(EINA_TRUE, station.favorite);
 }
 
-int test_view_mode_enum() {
+void test_view_mode_enum(void) {
     ViewMode search_mode = VIEW_SEARCH;
     ViewMode favorites_mode = VIEW_FAVORITES;
 
-    TEST_ASSERT(search_mode == 0, "VIEW_SEARCH should be 0");
-    TEST_ASSERT(favorites_mode == 1, "VIEW_FAVORITES should be 1");
-    TEST_ASSERT(search_mode != favorites_mode, "View modes should be different");
-
-    return 1;
+    TEST_ASSERT_EQUAL(0, search_mode);
+    TEST_ASSERT_EQUAL(1, favorites_mode);
+    TEST_ASSERT_NOT_EQUAL(search_mode, favorites_mode);
 }
 
-int test_appdata_structure() {
+void test_appdata_structure(void) {
     AppData appdata = {0};
 
     // Initialize some basic fields
@@ -53,15 +50,13 @@ int test_appdata_structure() {
     appdata.view_mode = VIEW_SEARCH;
     appdata.loading_requests = 5;
 
-    TEST_ASSERT(appdata.playing == EINA_FALSE, "Playing should be false initially");
-    TEST_ASSERT(appdata.filters_visible == EINA_TRUE, "Filters visible should be true");
-    TEST_ASSERT(appdata.view_mode == VIEW_SEARCH, "View mode should be SEARCH");
-    TEST_ASSERT(appdata.loading_requests == 5, "Loading requests should be 5");
-
-    return 1;
+    TEST_ASSERT_EQUAL(EINA_FALSE, appdata.playing);
+    TEST_ASSERT_EQUAL(EINA_TRUE, appdata.filters_visible);
+    TEST_ASSERT_EQUAL(VIEW_SEARCH, appdata.view_mode);
+    TEST_ASSERT_EQUAL(5, appdata.loading_requests);
 }
 
-int test_station_string_fields() {
+void test_station_string_fields(void) {
     Station station = {0};
 
     station.name = "Jazz FM";
@@ -73,38 +68,22 @@ int test_station_string_fields() {
     station.codec = "MP3";
     station.tags = "jazz,music";
 
-    TEST_ASSERT(strcmp(station.name, "Jazz FM") == 0, "Station name should be Jazz FM");
-    TEST_ASSERT(strcmp(station.url, "http://jazz.fm/stream.mp3") == 0, "Station URL should match");
-    TEST_ASSERT(strcmp(station.country, "USA") == 0, "Station country should be USA");
-    TEST_ASSERT(strcmp(station.language, "English") == 0, "Station language should be English");
-    TEST_ASSERT(strcmp(station.codec, "MP3") == 0, "Station codec should be MP3");
-    TEST_ASSERT(strcmp(station.tags, "jazz,music") == 0, "Station tags should match");
-
-    return 1;
+    TEST_ASSERT_EQUAL_STRING("Jazz FM", station.name);
+    TEST_ASSERT_EQUAL_STRING("http://jazz.fm/stream.mp3", station.url);
+    TEST_ASSERT_EQUAL_STRING("USA", station.country);
+    TEST_ASSERT_EQUAL_STRING("English", station.language);
+    TEST_ASSERT_EQUAL_STRING("MP3", station.codec);
+    TEST_ASSERT_EQUAL_STRING("jazz,music", station.tags);
 }
 
 // Main test runner
-int main() {
-    printf("Running eradio basic tests...\n");
-    printf("================================\n");
+int main(void) {
+    UNITY_BEGIN();
 
-    int passed = 0;
-    int total = 0;
+    RUN_TEST(test_station_creation);
+    RUN_TEST(test_view_mode_enum);
+    RUN_TEST(test_appdata_structure);
+    RUN_TEST(test_station_string_fields);
 
-    // Run tests
-    total++; passed += test_station_creation();
-    total++; passed += test_view_mode_enum();
-    total++; passed += test_appdata_structure();
-    total++; passed += test_station_string_fields();
-
-    printf("================================\n");
-    printf("Test Results: %d/%d tests passed\n", passed, total);
-
-    if (passed == total) {
-        printf("All tests PASSED!\n");
-        return EXIT_SUCCESS;
-    } else {
-        printf("Some tests FAILED!\n");
-        return EXIT_FAILURE;
-    }
+    return UNITY_END();
 }
