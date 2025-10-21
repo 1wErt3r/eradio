@@ -42,3 +42,9 @@ jobs:
 
     - name: Build application
       run: make
+
+    - name: Run tests
+      run: |
+        cd src
+        make test_basic
+        ./test_basic
