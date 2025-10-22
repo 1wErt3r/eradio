@@ -1,4 +1,4 @@
-AC_INIT([eradio], [0.0.14], [])
+AC_INIT([eradio], [0.0.15], [])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign subdir-objects])
 AC_PROG_CC
 AC_CONFIG_HEADERS([config.h])
