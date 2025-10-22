@@ -36,6 +36,7 @@ typedef struct _AppData
    Evas_Object *controls_toolbar;
    Elm_Object_Item *play_pause_item;
    Elm_Object_Item *stop_item;
+   Elm_Object_Item *visualizer_item;
    Evas_Object *separator;
    Evas_Object *statusbar;
    Evas_Object *volume_slider;
@@ -58,4 +59,10 @@ typedef struct _AppData
    ViewMode view_mode;
    int search_offset;
    int displayed_stations_count;
+
+   // Visualizer
+   Evas_Object *visualizer_win;
+   Evas_Object *visualizer_emotion;
+   Eina_Bool visualizer_active;
+   Eina_Bool visualizer_fullscreen;
 } AppData;

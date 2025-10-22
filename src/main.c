@@ -3,6 +3,7 @@
 #include "radio_player.h"
 #include "http.h"
 #include "favorites.h"
+#include "visualizer.h"
 
 EAPI_MAIN int
 elm_main(int argc, char **argv)
@@ -17,11 +18,13 @@ elm_main(int argc, char **argv)
    http_init(&ad);
    ui_update_server_list(&ad);
    radio_player_init(&ad);
+   visualizer_init(&ad);
 
    elm_run();
 
    http_shutdown();
    radio_player_shutdown();
+   visualizer_shutdown(&ad);
    favorites_shutdown(&ad);
 
    return 0;
