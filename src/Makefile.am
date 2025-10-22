@@ -6,13 +6,21 @@ eradio_SOURCES = main.c ui.c radio_player.c station_list.c http.c favorites.c vi
 eradio_CFLAGS = $(EFL_CFLAGS) $(LIBXML_CFLAGS)
 eradio_LDADD = $(EFL_LIBS) $(LIBXML_LIBS)
 
-# Test program with Unity framework
-noinst_PROGRAMS = test_basic
+# Tests are only built in development, not in distribution
+# The test files are excluded from the distribution package
 
-# Unity framework sources
-UNITY_SRC = $(top_srcdir)/vendor/unity/src/unity.c
-UNITY_HDR = $(top_srcdir)/vendor/unity/src/unity.h
+# Exclude test files and vendor directory from distribution
+nodist_noinst_HEADERS =
 
-test_basic_SOURCES = tests/test_basic.c appdata.h $(UNITY_SRC)
-test_basic_CFLAGS = $(EFL_CFLAGS) -I$(top_srcdir)/vendor/unity/src
-test_basic_LDADD = $(EFL_LIBS_NO_CON)
+# Don't include test or vendor files in distribution
+EXTRA_DIST =
+
+# Ensure tests and vendor are never included in distribution
+dist_noinst_DATA =
+
+# Clean any remaining test/vendor files
+dist-hook:
+	@echo "Cleaning distribution..."
+	rm -rf $(distdir)/tests
+	rm -rf $(distdir)/vendor
+	@echo "Distribution cleaned successfully"
