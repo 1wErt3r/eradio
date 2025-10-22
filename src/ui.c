@@ -251,7 +251,7 @@ ui_create(AppData *ad)
 
    ad->play_pause_item = elm_toolbar_item_append(ad->controls_toolbar, "media-playback-start", "Play/Pause", _play_pause_btn_clicked_cb, ad);
    ad->stop_item = elm_toolbar_item_append(ad->controls_toolbar, "media-playback-stop", "Stop", _stop_btn_clicked_cb, ad);
-   ad->visualizer_item = elm_toolbar_item_append(ad->controls_toolbar, "media-video", "Visualizer", _visualizer_btn_clicked_cb, ad);
+   ad->visualizer_item = elm_toolbar_item_append(ad->controls_toolbar, "preferences-desktop-theme", "Visualizer", _visualizer_btn_clicked_cb, ad);
 
    evas_object_smart_callback_add(ad->search_btn, "clicked", _search_btn_clicked_cb, ad);
    evas_object_smart_callback_add(ad->search_entry, "activated", _search_entry_activated_cb, ad);
@@ -390,10 +390,19 @@ static void
 _volume_slider_changed_cb(void *data, Evas_Object *obj, void *event_info)
 {
    AppData *ad = data;
-   if (!ad || !ad->emotion) return;
+   if (!ad) return;
 
    double volume = elm_slider_value_get(obj);
-   emotion_object_audio_volume_set(ad->emotion, volume);
+
+   // Set volume for main emotion object if it exists
+   if (ad->emotion) {
+       emotion_object_audio_volume_set(ad->emotion, volume);
+   }
+
+   // Set volume for visualizer emotion object if it exists
+   if (ad->visualizer_emotion) {
+       emotion_object_audio_volume_set(ad->visualizer_emotion, volume);
+   }
 }
 
 void

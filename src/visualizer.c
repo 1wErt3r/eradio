@@ -54,6 +54,12 @@ visualizer_show(AppData *ad)
    // Set GOOM visualization
    emotion_object_vis_set(ad->visualizer_emotion, EMOTION_VIS_GOOM);
 
+   // Set initial volume to match the current volume slider setting
+   if (ad->volume_slider) {
+       double current_volume = elm_slider_value_get(ad->volume_slider);
+       emotion_object_audio_volume_set(ad->visualizer_emotion, current_volume);
+   }
+
    // Add title change callback for window title updates
    evas_object_smart_callback_add(ad->visualizer_emotion, "title_change", _visualizer_title_changed_cb, ad);
 
@@ -64,11 +70,15 @@ visualizer_show(AppData *ad)
    evas_object_show(ad->visualizer_emotion);
 
    // If there's already a station playing, connect the visualizer to it
+   // BUT pause the main player to prevent dual audio
    if (ad->playing && ad->emotion)
      {
         const char *current_url = emotion_object_file_get(ad->emotion);
         if (current_url)
           {
+             // Pause the main player to prevent dual audio
+             emotion_object_play_set(ad->emotion, EINA_FALSE);
+             // Connect visualizer to the same station
              emotion_object_file_set(ad->visualizer_emotion, current_url);
              emotion_object_play_set(ad->visualizer_emotion, EINA_TRUE);
           }
@@ -84,11 +94,18 @@ visualizer_hide(AppData *ad)
    if (!ad->visualizer_active)
      return;
 
+   // Stop the visualizer player and restore main player if needed
    if (ad->visualizer_emotion)
      {
         emotion_object_play_set(ad->visualizer_emotion, EINA_FALSE);
         evas_object_del(ad->visualizer_emotion);
         ad->visualizer_emotion = NULL;
+     }
+
+   // If we were playing before showing visualizer, restore main player
+   if (ad->playing && ad->emotion)
+     {
+        emotion_object_play_set(ad->emotion, EINA_TRUE);
      }
 
    if (ad->visualizer_win)
@@ -124,6 +141,9 @@ visualizer_play(AppData *ad)
    if (!ad->visualizer_active || !ad->visualizer_emotion)
      return;
 
+   // Pause main player and start visualizer player
+   if (ad->emotion)
+     emotion_object_play_set(ad->emotion, EINA_FALSE);
    emotion_object_play_set(ad->visualizer_emotion, EINA_TRUE);
 }
 
@@ -134,6 +154,9 @@ visualizer_pause(AppData *ad)
      return;
 
    emotion_object_play_set(ad->visualizer_emotion, EINA_FALSE);
+   // Resume main player if it was playing
+   if (ad->playing && ad->emotion)
+     emotion_object_play_set(ad->emotion, EINA_TRUE);
 }
 
 void
@@ -144,6 +167,9 @@ visualizer_stop(AppData *ad)
 
    emotion_object_play_set(ad->visualizer_emotion, EINA_FALSE);
    emotion_object_position_set(ad->visualizer_emotion, 0.0);
+   // Only resume main player if we're not in a global stop operation
+   if (ad->playing && ad->emotion)
+     emotion_object_play_set(ad->emotion, EINA_TRUE);
 }
 
 void

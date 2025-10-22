@@ -148,11 +148,14 @@ radio_player_play(AppData *ad, const char *url, const char *station_name)
           }
 
         emotion_object_file_set(ad->emotion, url);
-        emotion_object_play_set(ad->emotion, EINA_TRUE);
         ad->playing = EINA_TRUE;
 
-        // Start visualizer playback if active
-        visualizer_play(ad);
+        // If visualizer is active, let it handle playback
+        if (ad->visualizer_active) {
+            visualizer_play(ad);
+        } else {
+            emotion_object_play_set(ad->emotion, EINA_TRUE);
+        }
         if (ad->play_pause_item)
           elm_toolbar_item_icon_set(ad->play_pause_item, "media-playback-pause");
 
@@ -175,12 +178,15 @@ radio_player_play(AppData *ad, const char *url, const char *station_name)
 void
 radio_player_stop(AppData *ad)
 {
+   // Stop visualizer if active
+   if (ad->visualizer_active) {
+       visualizer_stop(ad);
+   }
+
+   // Stop main player
    emotion_object_play_set(ad->emotion, EINA_FALSE);
    emotion_object_position_set(ad->emotion, 0.0);
    ad->playing = EINA_FALSE;
-
-   // Stop visualizer if active
-   visualizer_stop(ad);
 
    // Cancel all timers
    if (stream_error_timer)
