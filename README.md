@@ -17,6 +17,7 @@ A simple internet radio player built with the Enlightenment Foundation Libraries
 - Search by station name, country, language, or tag
 - Save favorite radio stations locally
 - Add custom radio station URLs manually
+- GOOM visualizer
 
 ## Favorites Storage
 
