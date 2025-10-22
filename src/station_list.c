@@ -27,28 +27,41 @@ _gl_text_get(void *data, Evas_Object *obj, const char *part)
         {
             char bitrate_str[32];
             snprintf(bitrate_str, sizeof(bitrate_str), "%d kbps", st->bitrate);
-            strcat(info, bitrate_str);
+            size_t remaining = sizeof(info) - strlen(info);
+            snprintf(info + strlen(info), remaining, "%s", bitrate_str);
             first_item = EINA_FALSE;
         }
 
         if (st->codec && st->codec[0])
         {
-            if (!first_item) strcat(info, " | ");
-            strcat(info, st->codec);
+            if (!first_item) {
+                size_t remaining = sizeof(info) - strlen(info);
+                snprintf(info + strlen(info), remaining, " | ");
+            }
+            size_t remaining = sizeof(info) - strlen(info);
+            snprintf(info + strlen(info), remaining, "%s", st->codec);
             first_item = EINA_FALSE;
         }
 
         if (st->country && st->country[0])
         {
-            if (!first_item) strcat(info, " | ");
-            strcat(info, st->country);
+            if (!first_item) {
+                size_t remaining = sizeof(info) - strlen(info);
+                snprintf(info + strlen(info), remaining, " | ");
+            }
+            size_t remaining = sizeof(info) - strlen(info);
+            snprintf(info + strlen(info), remaining, "%s", st->country);
             first_item = EINA_FALSE;
         }
 
         if (st->language && st->language[0])
         {
-            if (!first_item) strcat(info, " | ");
-            strcat(info, st->language);
+            if (!first_item) {
+                size_t remaining = sizeof(info) - strlen(info);
+                snprintf(info + strlen(info), remaining, " | ");
+            }
+            size_t remaining = sizeof(info) - strlen(info);
+            snprintf(info + strlen(info), remaining, "%s", st->language);
             first_item = EINA_FALSE;
         }
 

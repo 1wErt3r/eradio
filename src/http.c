@@ -651,7 +651,16 @@ static void _retry_next_server_station(Ecore_Con_Url *old_url, Station_Download_
 
 static void _populate_counter_request(Counter_Download_Context *c_ctx, AppData *ad, const char *uuid)
 {
-   fprintf(stderr, "LOG: _populate_counter_request: ad=%p, ad->api_servers=%p\n", ad, ad ? ad->api_servers : NULL);
+   if (!ad) {
+       fprintf(stderr, "Error: ad is null in _populate_counter_request\n");
+       return;
+   }
+   if (!ad->api_servers) {
+       fprintf(stderr, "Error: ad->api_servers is null in _populate_counter_request\n");
+       return;
+   }
+
+   fprintf(stderr, "LOG: _populate_counter_request: ad=%p, ad->api_servers=%p\n", ad, ad->api_servers);
    strncpy(c_ctx->stationuuid, uuid, sizeof(c_ctx->stationuuid) - 1);
    c_ctx->servers = eina_list_clone(ad->api_servers);
    _prepend_selected_as_primary(&c_ctx->servers, ad->api_selected);
