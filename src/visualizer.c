@@ -3,6 +3,9 @@
 
 static void _visualizer_win_del_cb(void *data, Evas_Object *obj, void *event_info);
 static void _visualizer_title_changed_cb(void *data, Evas_Object *obj, void *event_info);
+static void _visualizer_mouse_down_cb(void *data, Evas *e, Evas_Object *obj, void *event_info);
+static void _visualizer_menu_dismissed_cb(void *data, Evas_Object *obj, void *event_info);
+static void _fullscreen_toggle_cb(void *data, Evas_Object *obj, void *event_info);
 
 void
 visualizer_init(AppData *ad)
@@ -10,6 +13,7 @@ visualizer_init(AppData *ad)
    ad->visualizer_win = NULL;
    ad->visualizer_emotion = NULL;
    ad->visualizer_active = EINA_FALSE;
+   ad->visualizer_fullscreen = EINA_FALSE;
 }
 
 static void
@@ -52,7 +56,7 @@ visualizer_show(AppData *ad)
    ad->visualizer_emotion = emotion_object_add(ad->visualizer_win);
 
    // Set GOOM visualization
-   emotion_object_vis_set(ad->visualizer_emotion, EMOTION_VIS_GOOM);
+   emotion_object_vis_set(ad->visualizer_emotion, EMOTION_VIS_LIBVISUAL_DANCING_PARTICLES);
 
    // Set initial volume to match the current volume slider setting
    if (ad->volume_slider) {
@@ -69,6 +73,9 @@ visualizer_show(AppData *ad)
    elm_win_resize_object_add(ad->visualizer_win, ad->visualizer_emotion);
    evas_object_show(ad->visualizer_emotion);
 
+   // Add mouse down callback for right-click context menu
+   evas_object_event_callback_add(ad->visualizer_emotion, EVAS_CALLBACK_MOUSE_DOWN, _visualizer_mouse_down_cb, ad);
+ 
    // If there's already a station playing, connect the visualizer to it
    // BUT pause the main player to prevent dual audio
    if (ad->playing && ad->emotion)
@@ -115,6 +122,7 @@ visualizer_hide(AppData *ad)
      }
 
    ad->visualizer_active = EINA_FALSE;
+   ad->visualizer_fullscreen = EINA_FALSE; // Reset fullscreen state
 }
 
 void
@@ -176,4 +184,56 @@ void
 visualizer_shutdown(AppData *ad)
 {
    visualizer_hide(ad);
+}
+
+// Mouse down callback to show context menu
+static void
+_visualizer_mouse_down_cb(void *data, Evas *e, Evas_Object *obj, void *event_info)
+{
+   AppData *ad = data;
+   Evas_Event_Mouse_Down *ev = event_info;
+
+   if (ev->button == 3) // Right click
+     {
+        Evas_Object *menu = elm_ctxpopup_add(ad->visualizer_win);
+        elm_ctxpopup_auto_hide_disabled_set(menu, EINA_FALSE);
+        evas_object_smart_callback_add(menu, "dismissed", _visualizer_menu_dismissed_cb, ad);
+
+        // Add fullscreen/window mode toggle
+        const char *menu_text = ad->visualizer_fullscreen ? "Window Mode" : "Fullscreen Mode";
+        elm_ctxpopup_item_append(menu, menu_text, NULL, _fullscreen_toggle_cb, ad);
+
+        // Position and show the menu
+        evas_object_move(menu, ev->canvas.x, ev->canvas.y);
+        evas_object_show(menu);
+     }
+}
+
+// Menu dismissed callback
+static void
+_visualizer_menu_dismissed_cb(void *data, Evas_Object *obj, void *event_info)
+{
+   evas_object_del(obj);
+}
+
+// Fullscreen toggle callback
+static void
+_fullscreen_toggle_cb(void *data, Evas_Object *obj, void *event_info)
+{
+   AppData *ad = data;
+
+   if (ad->visualizer_fullscreen)
+     {
+        // Switch to window mode
+        elm_win_fullscreen_set(ad->visualizer_win, EINA_FALSE);
+        ad->visualizer_fullscreen = EINA_FALSE;
+        printf("Switched to window mode\n");
+     }
+   else
+     {
+        // Switch to fullscreen mode
+        elm_win_fullscreen_set(ad->visualizer_win, EINA_TRUE);
+        ad->visualizer_fullscreen = EINA_TRUE;
+        printf("Switched to fullscreen mode\n");
+     }
 }

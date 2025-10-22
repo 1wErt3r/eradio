@@ -64,4 +64,5 @@ typedef struct _AppData
    Evas_Object *visualizer_win;
    Evas_Object *visualizer_emotion;
    Eina_Bool visualizer_active;
+   Eina_Bool visualizer_fullscreen;
 } AppData;
