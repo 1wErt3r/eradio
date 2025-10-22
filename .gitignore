@@ -9,10 +9,8 @@ dist/
 out/
 bin/
 
-# Test dependencies
+# Vendor dependencies
 vendor/
-tests/.deps/
-tests/test_basic
 
 # Autotools generated files
 Makefile

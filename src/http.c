@@ -56,6 +56,21 @@ typedef struct _Counter_Download_Context
    char stationuuid[128];
 } Counter_Download_Context;
 
+// Helper function to clean up a Station structure
+static void _station_free(Station *st)
+{
+    if (!st) return;
+    eina_stringshare_del(st->name);
+    eina_stringshare_del(st->url);
+    eina_stringshare_del(st->favicon);
+    eina_stringshare_del(st->stationuuid);
+    eina_stringshare_del(st->country);
+    eina_stringshare_del(st->language);
+    eina_stringshare_del(st->codec);
+    eina_stringshare_del(st->tags);
+    free(st);
+}
+
 static Eina_Bool _url_data_cb(void *data, int type, void *event_info);
 static Eina_Bool _url_complete_cb(void *data, int type, void *event_info);
 
@@ -390,7 +405,17 @@ _handle_station_list_complete(Ecore_Con_Event_Url_Complete *ev)
              xmlFree(prop);
           }
 
-        ad->stations = eina_list_append(ad->stations, st);
+        // Add to list - check for failure to avoid memory leak
+        Eina_List *new_list = eina_list_append(ad->stations, st);
+        if (!new_list)
+        {
+            // List append failed, clean up the station
+            _station_free(st);
+        }
+        else
+        {
+            ad->stations = new_list;
+        }
     }
 
     favorites_apply_to_stations(ad);
@@ -616,9 +641,11 @@ static void _retry_next_server_station(Ecore_Con_Url *old_url, Station_Download_
          xmlFreeParserCtxt(d_ctx->ctxt);
          d_ctx->ctxt = NULL;
       }
+      // Save ad pointer before freeing context to avoid use-after-free
+      AppData *ad = d_ctx->base.ad;
       eina_list_free(d_ctx->servers);
       free(d_ctx);
-      ui_loading_stop(((Download_Context *)d_ctx)->ad);
+      ui_loading_stop(ad);
    }
 }
 
@@ -660,8 +687,10 @@ static void _retry_next_server_counter(Ecore_Con_Url *old_url, Counter_Download_
    {
       printf("All servers exhausted for counter; giving up.\n");
       ecore_con_url_free(old_url);
+      // Save ad pointer before freeing context to avoid use-after-free
+      AppData *ad = c_ctx->base.ad;
       eina_list_free(c_ctx->servers);
       free(c_ctx);
-      ui_loading_stop(((Download_Context *)c_ctx)->ad);
+      ui_loading_stop(ad);
    }
 }

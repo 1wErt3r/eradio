@@ -81,12 +81,24 @@ _favorites_hash_add_entry(AppData *ad, const char *key, const char *uuid, const 
     if (!key || !key[0]) return;
     FavEntry *e = calloc(1, sizeof(FavEntry));
     if (!e) return;
+
     e->key = key ? strdup(key) : NULL;
     e->uuid = uuid ? strdup(uuid) : NULL;
     e->url = url ? strdup(url) : NULL;
     e->name = name ? strdup(name) : NULL;
     e->favicon = favicon ? strdup(favicon) : NULL;
-    eina_hash_add(ad->favorites, e->key, e);
+
+    // Add to hash - if this fails, we need to clean up manually
+    if (!eina_hash_add(ad->favorites, e->key, e))
+    {
+        // Manual cleanup since hash add failed
+        free(e->key);
+        free(e->uuid);
+        free(e->url);
+        free(e->name);
+        free(e->favicon);
+        free(e);
+    }
 }
 
 void
@@ -277,7 +289,20 @@ static Eina_Bool _favorites_rebuild_cb(const Eina_Hash *hash EINA_UNUSED, const 
     if (e->uuid) st->stationuuid = eina_stringshare_add(e->uuid);
     if (e->favicon) st->favicon = eina_stringshare_add(e->favicon);
     st->favorite = EINA_TRUE;
-    ad->favorites_stations = eina_list_append(ad->favorites_stations, st);
+
+    // Add to list - check for failure to avoid memory leak
+    Eina_List *new_list = eina_list_append(ad->favorites_stations, st);
+    if (!new_list)
+    {
+        // List append failed, clean up the station
+        eina_stringshare_del(st->name);
+        eina_stringshare_del(st->url);
+        eina_stringshare_del(st->stationuuid);
+        eina_stringshare_del(st->favicon);
+        free(st);
+        return EINA_TRUE;
+    }
+    ad->favorites_stations = new_list;
     return EINA_TRUE;
 }
 
