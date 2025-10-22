@@ -16,6 +16,7 @@ static void _tb_url_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 // Forward declarations for callbacks
 void _play_pause_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 void _stop_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
+void _visualizer_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 void _search_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info);
 void _search_entry_activated_cb(void *data, Evas_Object *obj, void *event_info);
 void _list_item_selected_cb(void *data, Evas_Object *obj, void *event_info);
@@ -250,6 +251,7 @@ ui_create(AppData *ad)
 
    ad->play_pause_item = elm_toolbar_item_append(ad->controls_toolbar, "media-playback-start", "Play/Pause", _play_pause_btn_clicked_cb, ad);
    ad->stop_item = elm_toolbar_item_append(ad->controls_toolbar, "media-playback-stop", "Stop", _stop_btn_clicked_cb, ad);
+   ad->visualizer_item = elm_toolbar_item_append(ad->controls_toolbar, "media-video", "Visualizer", _visualizer_btn_clicked_cb, ad);
 
    evas_object_smart_callback_add(ad->search_btn, "clicked", _search_btn_clicked_cb, ad);
    evas_object_smart_callback_add(ad->search_entry, "activated", _search_entry_activated_cb, ad);

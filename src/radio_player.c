@@ -1,5 +1,6 @@
 #include "radio_player.h"
 #include "ui.h"
+#include "visualizer.h"
 
 static Ecore_Timer *stream_error_timer = NULL;
 static Ecore_Timer *audio_progress_timer = NULL;
@@ -149,12 +150,18 @@ radio_player_play(AppData *ad, const char *url, const char *station_name)
         emotion_object_file_set(ad->emotion, url);
         emotion_object_play_set(ad->emotion, EINA_TRUE);
         ad->playing = EINA_TRUE;
+
+        // Start visualizer playback if active
+        visualizer_play(ad);
         if (ad->play_pause_item)
           elm_toolbar_item_icon_set(ad->play_pause_item, "media-playback-pause");
 
         // Show station name initially
         if (current_station_name)
           elm_object_text_set(ad->statusbar, current_station_name);
+
+        // Update visualizer with new station
+        visualizer_set_station(ad, url);
 
         // Reset position tracking
         last_position = 0.0;
@@ -171,6 +178,9 @@ radio_player_stop(AppData *ad)
    emotion_object_play_set(ad->emotion, EINA_FALSE);
    emotion_object_position_set(ad->emotion, 0.0);
    ad->playing = EINA_FALSE;
+
+   // Stop visualizer if active
+   visualizer_stop(ad);
 
    // Cancel all timers
    if (stream_error_timer)
@@ -202,6 +212,13 @@ radio_player_toggle_pause(AppData *ad)
 {
    ad->playing = !ad->playing;
    emotion_object_play_set(ad->emotion, ad->playing);
+
+   // Sync visualizer with playback state
+   if (ad->playing)
+     visualizer_play(ad);
+   else
+     visualizer_pause(ad);
+
    if (ad->play_pause_item)
      {
         if (ad->playing)
@@ -223,4 +240,11 @@ _stop_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info)
 {
    AppData *ad = data;
    radio_player_stop(ad);
+}
+
+void
+_visualizer_btn_clicked_cb(void *data, Evas_Object *obj, void *event_info)
+{
+   AppData *ad = data;
+   visualizer_toggle(ad);
 }
