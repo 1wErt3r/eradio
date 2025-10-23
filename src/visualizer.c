@@ -1,5 +1,6 @@
 #include "visualizer.h"
 #include "ui.h"
+#include "radio_player.h"
 
 static void _visualizer_win_del_cb(void *data, Evas_Object *obj, void *event_info);
 static void _visualizer_title_changed_cb(void *data, Evas_Object *obj, void *event_info);
@@ -101,7 +102,7 @@ visualizer_hide(AppData *ad)
    if (!ad->visualizer_active)
      return;
 
-   // Stop the visualizer player and restore main player if needed
+   // Stop the visualizer player
    if (ad->visualizer_emotion)
      {
         emotion_object_play_set(ad->visualizer_emotion, EINA_FALSE);
@@ -109,11 +110,8 @@ visualizer_hide(AppData *ad)
         ad->visualizer_emotion = NULL;
      }
 
-   // If we were playing before showing visualizer, restore main player
-   if (ad->playing && ad->emotion)
-     {
-        emotion_object_play_set(ad->emotion, EINA_TRUE);
-     }
+   // Stop playback completely instead of resuming main player
+   radio_player_stop(ad);
 
    if (ad->visualizer_win)
      {
