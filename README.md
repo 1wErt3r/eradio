@@ -19,6 +19,20 @@ A simple internet radio player built with the Enlightenment Foundation Libraries
 - Add custom radio station URLs manually
 - GOOM visualizer
 
+## Installing on Fedora or openSUSE Tumbleweed
+
+[eradio on Fedora copr](https://copr.fedorainfracloud.org/coprs/1wert3r/eradio/)
+
+### Fedora
+
+1. `sudo dnf copr enable 1wert3r/eradio`
+2. `sudo dnf install eradio`
+
+### openSUSE Tumbleweed
+
+1. `sudo zypper addrepo --refresh https://copr.fedorainfracloud.org/coprs/1wert3r/eradio/repo/opensuse-tumbleweed/1wert3r-eradio-opensuse-tumbleweed.repo`
+2. `sudo zypper install eradio`
+
 ## Favorites Storage
 
 Favorite radio stations are saved locally in XML format at:
