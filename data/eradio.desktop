@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=eradio
-Comment=A tiny EFL demo application
+Comment=A minimalist internet radio player using EFL
 Exec=eradio
 Icon=eradio
 Terminal=false
