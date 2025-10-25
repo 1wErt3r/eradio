@@ -57,7 +57,7 @@ visualizer_show(AppData *ad)
    ad->visualizer_emotion = emotion_object_add(ad->visualizer_win);
 
    // Set GOOM visualization
-   emotion_object_vis_set(ad->visualizer_emotion, EMOTION_VIS_LIBVISUAL_DANCING_PARTICLES);
+   emotion_object_vis_set(ad->visualizer_emotion, EMOTION_VIS_GOOM);
 
    // Set initial volume to match the current volume slider setting
    if (ad->volume_slider) {
