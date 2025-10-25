@@ -2,10 +2,6 @@
 
 A simple internet radio player built with the Enlightenment Foundation Libraries (EFL).
 
-![Application Icon](data/eradio.png)
-
-## Screenshot
-
 ![Screenshot](shot.png)
 
 
